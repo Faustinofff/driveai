@@ -1,0 +1,106 @@
+# ============================================================================
+# DriveAI Backend — Configuración central (multi-perfil)
+#
+#   dev  → valores por defecto apuntan a localhost (docker compose up -d postgres)
+#   prod → espera SPRING_DATASOURCE_* y GROQ_API_KEY inyectadas por el entorno
+# ============================================================================
+
+spring:
+  application:
+    name: driveai-backend
+  profiles:
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # el esquema SIEMPRE lo gobierna Flyway
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: UTC
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+
+# ===== Propiedades personalizadas del integrador con Groq =====
+groq:
+  api:
+    base-url: ${GROQ_API_BASE_URL:https://api.groq.com/openai/v1}
+    api-key: ${GROQ_API_KEY:}
+    model: ${GROQ_MODEL:llama-3.3-70b-versatile}
+    connect-timeout-seconds: 10
+    read-timeout-seconds: 40
+    max-tokens: 1024
+    temperature: 0.2
+
+# ===== Rate limiting (Bucket4j) =====
+app:
+  rate-limit:
+    requests-per-minute: ${RATE_LIMIT_PER_MINUTE:5}
+
+# ============================================================================
+# Perfil: dev
+# ============================================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cardb}
+    username: ${SPRING_DATASOURCE_USERNAME:cardb_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:cardb_pass}
+
+logging:
+  level:
+    com.driveai: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.springframework.transaction: INFO
+
+# ============================================================================
+# Perfil: prod
+# ============================================================================
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    com.driveai: INFO
+    org.hibernate.SQL: WARN

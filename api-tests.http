@@ -1,0 +1,110 @@
+# ============================================================================
+# DriveAI — Colección de pruebas de API
+#
+# Uso en VS Code:  instala la extensión "REST Client" (humanitec).
+# Uso en IntelliJ: abre el archivo con "HTTP Request".
+#   - Asegúrate de que el backend corra en http://localhost:8080.
+#   - Para el endpoint IA (Groq) define GROQ_API_KEY en backend/.env o entorno.
+# ============================================================================
+
+@host = http://localhost:8080
+@sessionId = demo-session-001
+
+### 1. Healthcheck del backend
+GET {{host}}/actuator/health
+
+### 2. Catálogo paginado
+GET {{host}}/api/cars?page=0&size=12
+
+### 3. Filtros combinados (rango de precio + híbrido + SUV)
+GET {{host}}/api/cars?minPrice=20000&maxPrice=40000&fuelType=HIBRIDO&bodyType=SUV&sort=price,asc
+
+### 4. Búsqueda por término (marca/modelo/descripción)
+GET {{host}}/api/cars?q=civic
+
+### 5. Detalle de auto
+GET {{host}}/api/cars/8
+
+### 6. Auto inexistente -> 404 RFC7807
+GET {{host}}/api/cars/9999
+
+### 7. Carrito: obtener sesión (inicialmente vacía)
+GET {{host}}/api/cart?sessionId={{sessionId}}
+
+### 8. Carrito: agregar Toyota Corolla (id 7)
+POST {{host}}/api/cart/add
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}",
+  "carId": 7,
+  "quantity": 1
+}
+
+### 9. Carrito: actualizar cantidad del ítem
+PUT {{host}}/api/cart/update/1?sessionId={{sessionId}}
+Content-Type: application/json
+
+{
+  "quantity": 2
+}
+
+### 10. Checkout transaccional (descuenta stock, orden CONFIRMED)
+POST {{host}}/api/orders/checkout
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}",
+  "items": [
+    { "carId": 7, "quantity": 2 }
+  ]
+}
+
+### 11. Checkout con stock insuficiente -> 409 RFC7807
+POST {{host}}/api/orders/checkout
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}",
+  "items": [
+    { "carId": 7, "quantity": 9999 }
+  ]
+}
+
+### 12. Checkout con carro inexistente -> 404 RFC7807
+POST {{host}}/api/orders/checkout
+Content-Type: application/json
+
+{
+  "sessionId": "{{sessionId}}",
+  "items": [
+    { "carId": 987654, "quantity": 1 }
+  ]
+}
+
+### 13. Asesor IA: recomendación (requiere GROQ_API_KEY configurada)
+POST {{host}}/api/ai/recommend
+Content-Type: application/json
+
+{
+  "prompt": "Recomiéndame una SUV híbrida familiar por menos de 40,000 dólares",
+  "sessionId": "{{sessionId}}"
+}
+
+### 14. Asesor IA: prompt en blanco -> 400 RFC7807
+POST {{host}}/api/ai/recommend
+Content-Type: application/json
+
+{
+  "prompt": "   ",
+  "sessionId": "{{sessionId}}"
+}
+
+### 15. Carrito: eliminar ítem
+DELETE {{host}}/api/cart/remove/1?sessionId={{sessionId}}
+
+### 16. Documentación Swagger UI (abrir en navegador)
+GET {{host}}/swagger-ui.html
+
+### 17. Especificación OpenAPI (JSON)
+GET {{host}}/v3/api-docs

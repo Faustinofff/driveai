@@ -1,0 +1,49 @@
+# ===== Environment / Secrets =====
+.env
+.env.*
+!.env.example
+*.local
+*.pem
+
+# ===== Node / Frontend =====
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.local
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Java / Maven / Backend =====
+target/
+*.class
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing.properties
+hs_err_pid*
+replay_pid*
+
+# ===== IDE / Editors =====
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+.classpath
+.project
+.settings/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Logs / Misc =====
+*.log
+logs/
+tmp/
+.dockerignore.local

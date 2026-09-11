@@ -1,0 +1,18 @@
+# Maven
+target/
+*.class
+*.jar
+
+# Permite sobrescribir configuración local sin versionarla.
+src/main/resources/application-local.yml
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# Logs
+*.log
