@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 
+import java.net.http.HttpClient;
 import java.time.Duration;
 
 @Configuration
@@ -14,8 +15,10 @@ public class RestClientConfig {
 
     @Bean
     public ClientHttpRequestFactory groqRequestFactory(GroqApiProperties properties) {
-        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
-        factory.setConnectTimeout(Duration.ofSeconds(properties.connectTimeoutSeconds()));
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(properties.connectTimeoutSeconds()))
+                .build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(Duration.ofSeconds(properties.readTimeoutSeconds()));
         return factory;
     }

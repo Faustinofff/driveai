@@ -69,7 +69,7 @@ public class CartService {
 
     @Transactional
     public CartResponse updateItem(Long itemId, String sessionId, Integer quantity) {
-        CartItem item = cartItemRepository.findByIdAndCartSessionId(itemId, sessionId)
+        CartItem item = cartItemRepository.findByIdAndCart_SessionId(itemId, sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ítem de carrito", itemId));
 
         validateStock(item.getCar(), quantity);

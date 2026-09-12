@@ -1,11 +1,14 @@
 package com.driveai.service;
 
 import com.driveai.domain.model.Car;
+import com.driveai.dto.car.CarWriteRequest;
+import com.driveai.exception.ConflictException;
 import com.driveai.exception.ResourceNotFoundException;
 import com.driveai.repository.CarRepository;
 import com.driveai.specification.CarFilters;
 import com.driveai.specification.CarSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,5 +36,53 @@ public class CarService {
     public Car getById(Long id) {
         return carRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Auto", id));
+    }
+
+    @Transactional
+    public Car create(CarWriteRequest request) {
+        Car car = Car.builder()
+                .brand(request.brand().trim())
+                .model(request.model().trim())
+                .year(request.year())
+                .price(request.price())
+                .mileage(request.mileage())
+                .fuelType(request.fuelType())
+                .fuelConsumption(request.fuelConsumption())
+                .transmission(request.transmission())
+                .bodyType(request.bodyType())
+                .imageUrl(request.imageUrl().trim())
+                .description(request.description().trim())
+                .stock(request.stock())
+                .build();
+        return carRepository.save(car);
+    }
+
+    @Transactional
+    public Car update(Long id, CarWriteRequest request) {
+        Car car = getById(id);
+        car.setBrand(request.brand().trim());
+        car.setModel(request.model().trim());
+        car.setYear(request.year());
+        car.setPrice(request.price());
+        car.setMileage(request.mileage());
+        car.setFuelType(request.fuelType());
+        car.setFuelConsumption(request.fuelConsumption());
+        car.setTransmission(request.transmission());
+        car.setBodyType(request.bodyType());
+        car.setImageUrl(request.imageUrl().trim());
+        car.setDescription(request.description().trim());
+        car.setStock(request.stock());
+        return carRepository.save(car);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Car car = getById(id);
+        try {
+            carRepository.delete(car);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ConflictException(
+                    "El auto está referenciado en carritos u órdenes y no puede eliminarse.");
+        }
     }
 }

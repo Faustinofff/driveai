@@ -125,3 +125,43 @@ export const FUEL_COLORS: Record<FuelType, string> = {
   HIBRIDO: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   ELECTRICO: 'bg-sky-100 text-sky-800 border-sky-200',
 }
+
+export type UserRole = 'ADMIN' | 'CUSTOMER'
+
+export interface User {
+  id: number
+  email: string
+  fullName: string
+  role: UserRole
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface RegisterRequest {
+  email: string
+  password: string
+  fullName: string
+}
+
+export interface AuthResponse {
+  token: string
+  user: User
+}
+
+export interface CarWriteRequest {
+  brand: string
+  model: string
+  year: number
+  price: number
+  mileage: number
+  fuelType: FuelType
+  fuelConsumption: number
+  transmission: Transmission
+  bodyType: BodyType
+  imageUrl: string
+  description: string
+  stock: number
+}

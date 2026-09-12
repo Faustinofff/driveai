@@ -1,1 +1,1 @@
-export type AppView = 'catalog' | 'ai'
+export type AppView = 'catalog' | 'ai' | 'admin' | 'login'
