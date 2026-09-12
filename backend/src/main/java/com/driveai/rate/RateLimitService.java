@@ -4,6 +4,7 @@ import com.driveai.exception.RateLimitExceededException;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
+import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -53,5 +54,10 @@ public class RateLimitService {
             String victim = buckets.keySet().iterator().next();
             buckets.remove(victim);
         }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        buckets.clear();
     }
 }
