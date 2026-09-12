@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Loader2, Pencil, Plus, ShieldAlert, Trash2, X } from 'lucide-react'
+import { AlertTriangle, Loader2, LogOut, Pencil, Plus, ShieldAlert, Trash2, X } from 'lucide-react'
 import { createCar, deleteCar, getCars, updateCar } from '../services/api'
 import type { ApiError } from '../services/api'
-import { selectIsAdmin, useAuthStore } from '../store/authStore'
+import { selectIsAdmin, selectLogout, useAuthStore } from '../store/authStore'
 import type { BodyType, Car, CarWriteRequest, FuelType, Transmission } from '../types'
 import { BODY_LABELS, FUEL_LABELS } from '../types'
 import { formatMoney, formatNumber } from '../utils/formatters'
@@ -309,6 +309,7 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
 
 export function AdminPage() {
   const isAdmin = useAuthStore(selectIsAdmin)
+  const logout = useAuthStore(selectLogout)
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState<Car | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -335,7 +336,19 @@ export function AdminPage() {
         </span>
         <h1 className="mt-4 text-2xl font-extrabold tracking-tight">Acceso restringido</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Solo los administradores pueden gestionar el catálogo de autos.
+          Solo los administradores pueden gestionar el catálogo de autos. Tu cuenta actual no tiene
+          permisos de administración.
+        </p>
+        <button
+          type="button"
+          onClick={logout}
+          className="mt-6 inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-brand-400 hover:text-brand-700"
+        >
+          <LogOut className="h-4 w-4" />
+          Cambiar de cuenta (salir)
+        </button>
+        <p className="mt-3 text-xs text-slate-400">
+          Después de salir, ingresá con una cuenta administrador (ej. admin@driveai.com).
         </p>
       </div>
     )

@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Navbar } from './components/Navbar'
 import { CartDrawer } from './components/CartDrawer'
 import { CheckoutModal } from './components/CheckoutModal'
+import { Footer } from './components/Footer'
+import { Navbar } from './components/Navbar'
 import { useDebounce } from './hooks/useDebounce'
 import { AdminPage } from './pages/AdminPage'
 import { AiConciergePage } from './pages/AiConciergePage'
 import { CatalogPage } from './pages/CatalogPage'
+import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { selectAuthenticated, useAuthStore } from './store/authStore'
-import type { Order } from './types'
+import type { BodyType, Order } from './types'
 import type { AppView } from './types/view'
+
+const VALID_VIEWS: AppView[] = ['home', 'catalog', 'ai', 'admin', 'login']
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,12 +26,12 @@ const queryClient = new QueryClient({
 })
 
 export default function App() {
-  const [view, setView] = useState<AppView>('catalog')
+  const [view, setView] = useState<AppView>('home')
   const [searchValue, setSearchValue] = useState('')
   const debouncedSearch = useDebounce(searchValue, 400)
   const [cartOpen, setCartOpen] = useState(false)
   const [order, setOrder] = useState<Order | null>(null)
-  const [loginDestination, setLoginDestination] = useState<AppView>('catalog')
+  const [loginDestination, setLoginDestination] = useState<AppView>('home')
   const [loginNotice, setLoginNotice] = useState<string | undefined>(undefined)
 
   const isAuthenticated = useAuthStore(selectAuthenticated)
@@ -44,10 +48,37 @@ export default function App() {
     }
   }, [view, isAuthenticated])
 
+  useEffect(() => {
+    const applyHash = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '') as AppView
+      if (!VALID_VIEWS.includes(hash)) return
+      if (hash === 'admin') {
+        if (!isAuthenticated) {
+          setLoginDestination('admin')
+          setLoginNotice('Inicia sesión para entrar al panel de administración.')
+          setView('login')
+        } else {
+          setView('admin')
+        }
+        return
+      }
+      setView(hash)
+    }
+    applyHash()
+    window.addEventListener('hashchange', applyHash)
+    return () => window.removeEventListener('hashchange', applyHash)
+  }, [isAuthenticated])
+
   const openLogin = (destination: AppView, notice?: string) => {
     setLoginDestination(destination)
     setLoginNotice(notice)
     setView('login')
+  }
+
+  const openCatalogWithCategory = (bodyType: BodyType) => {
+    window.history.pushState(null, '', `?bodyType=${bodyType}`)
+    setView('catalog')
+    setSearchValue('')
   }
 
   return (
@@ -63,6 +94,13 @@ export default function App() {
         />
 
         <main className="flex-1">
+          {view === 'home' && (
+            <HomePage
+              onNavigate={setView}
+              onRequireLogin={() => openLogin('home', 'Inicia sesión para comprar en DriveAI.')}
+              onSelectCategory={openCatalogWithCategory}
+            />
+          )}
           {view === 'catalog' && (
             <CatalogPage
               q={debouncedSearch}
@@ -79,14 +117,7 @@ export default function App() {
           )}
         </main>
 
-        <footer className="border-t border-slate-200 bg-white py-6">
-          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 text-sm text-slate-500 sm:flex-row">
-            <span className="font-semibold text-slate-700">
-              Drive<span className="text-brand-600">AI</span>
-            </span>
-            <span>E-commerce de autos con asesor inteligente (Groq Cloud).</span>
-          </div>
-        </footer>
+        <Footer onNavigate={setView} />
 
         <CartDrawer
           open={cartOpen}
