@@ -5,15 +5,19 @@
 @layer base {
   html {
     @apply scroll-smooth antialiased;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
   body {
-    @apply bg-slate-100 text-slate-900;
+    @apply bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100;
   }
 }
 
 @layer components {
   .input-base {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30;
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-brand-400;
   }
 }
 
@@ -28,10 +32,35 @@
     background-size: 400px 100%;
     animation: shimmer 1.5s ease-in-out infinite;
   }
+  .dark .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(51, 65, 85, 0.4) 25%,
+      rgba(51, 65, 85, 0.7) 37%,
+      rgba(51, 65, 85, 0.4) 63%
+    );
+    background-size: 400px 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
   .scrollbar-none {
     scrollbar-width: none;
   }
   .scrollbar-none::-webkit-scrollbar {
     display: none;
+  }
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.6s ease,
+      transform 0.6s ease;
+    will-change: opacity, transform;
+  }
+  .reveal-visible {
+    opacity: 1;
+    transform: none;
+  }
+  .text-balance {
+    text-wrap: balance;
   }
 }
