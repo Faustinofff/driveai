@@ -2,20 +2,22 @@
 
 Plataforma completa de venta de autos usados a nivel producción:
 
-- **Backend**: Spring Boot 3.3 (Java 17) + Spring Data JPA + PostgreSQL 16 + Flyway + Bucket4j + SpringDoc.
+- **Backend**: Spring Boot 3.3 (Java 17) + Spring Security (JWT) + Spring Data JPA + PostgreSQL 16 + Flyway + Bucket4j + SpringDoc.
 - **Frontend**: React 18 + Vite + TypeScript + Tailwind CSS + TanStack Query + Zustand.
-- **IA**: recomendador inteligente con Groq Cloud (`llama-3.3-70b-versatile`) con **rate limiting**, **anti-alucinación** de IDs y auditoría de prompts.
+- **IA**: recomendador inteligente con Groq Cloud (`groq/compound-mini`) con **rate limiting**, **anti-alucinación** de IDs y auditoría de prompts.
 
 ---
 
 ## ✨ Características
 
-- Catálogo paginado y **filtrable** (marca, rango de precio, año mín., combustible, carrocería, búsqueda libre).
-- Carrito anónimo por `sessionId` con `priceSnapshot` congelado al añadir.
+- Catálogo paginado y **filtrable** (marca, rango de precio, año mín., combustible, carrocería, búsqueda libre). **Público**, sin login.
+- **Cuentas y roles con JWT**: `CUSTOMER` (carrito, compra, IA) y `ADMIN` (publica/edita/elimina autos desde el panel).
+- Carrito por `sessionId` con `priceSnapshot` congelado al añadir (requiere sesión iniciada).
 - Checkout **transaccional** con bloqueo pesimista (`PESSIMISTIC_WRITE`), validación de stock e inventario descontado.
+- **Panel de administración** en el frontend: alta/edición/borrado de autos con validación.
 - Asesor de compra IA en lenguaje natural que solo recomienda autos **reales en stock** (filtra IDs alucinados).
 - Rate limit local con **Bucket4j** (5 req/min por `sessionId|IP`) → `429` con `Retry-After`.
-- Errores uniformes **RFC 7807** (`application/problem+json`).
+- Errores uniformes **RFC 7807** (`application/problem+json`), incluidos `401`/`403`.
 - Migraciones versionadas **Flyway** + validación de esquema (`ddl-auto=validate`).
 - Despliegue unificado con **Docker Compose** y **NINGÚN secret hardcodeado**.
 
@@ -31,15 +33,16 @@ Plataforma completa de venta de autos usados a nivel producción:
                                        │ JSON (RFC 7807)
                                        ▼
                            ┌──────────────────────────────┐
-                           │  Backend Spring Boot 3.3      │
-                           │  Car / Cart / Order / AI      │
-                           │  Bucket4j · Flyway · JPA      │
+│  Backend Spring Boot 3.3      │
+                            │  JWT · Car / Cart / Order / AI │
+                            │  Bucket4j · Flyway · JPA      │
                            └──────────────┬──────────────┘
                                           │ JDBC
                                           ▼
                            ┌──────────────────────────────┐
                            │   PostgreSQL 16  (cardb)      │
-                           │   cars, carts, orders, logs   │
+                           │   cars, app_users, carts,    │
+                            │   orders, logs                 │
                            └──────────────────────────────┘
 ```
 
@@ -54,20 +57,21 @@ Plataforma completa de venta de autos usados a nivel producción:
 │   ├── Dockerfile
 │   └── src/
 │       ├── main/java/com/driveai/
-│       │   ├── advice/             # @ControllerAdvice RFC 7807
+│       │   ├── advice/             # @ControllerAdvice RFC 7807 (400/401/403/404/409/429/503)
 │       │   ├── ai/                 # GroqApiClient + HttpGroqApiClient
-│       │   ├── config/             # RestClient, OpenAPI, GroqApiProperties
-│       │   ├── controller/         # Car / Cart / Order / AiAdvisor
-│       │   ├── domain/             # enums + entidades JPA
-│       │   ├── dto/                # records Request/Response
-│       │   ├── exception/          # excepciones de negocio
+│       │   ├── config/             # RestClient, OpenAPI, GroqApiProperties, AdminInitializer
+│       │   ├── controller/         # Car / Cart / Order / AiAdvisor / Auth
+│       │   ├── domain/             # enums + entidades JPA (incl. AppUser)
+│       │   ├── dto/                # records Request/Response (incl. Auth)*
+│       │   ├── exception/          # excepciones de negocio (ConflictException)
 │       │   ├── rate/               # RateLimitService (Bucket4j)
 │       │   ├── repository/         # repositorios Spring Data
-│       │   ├── service/            # Car / Cart / Order / GroqAdvisor
+│       │   ├── security/           # JwtService, JwtAuthenticationFilter, SecurityConfig
+│       │   ├── service/            # Car / Cart / Order / GroqAdvisor / Auth
 │       │   └── specification/      # CarSpecification + CarFilters
 │       ├── main/resources/
-│       │   ├── application.yml     # perfiles dev / prod
-│       │   └── db/migration/       # V1__init_schema.sql, V2__seed_cars.sql
+│       │   ├── application.yml     # perfiles dev / prod (+ app.jwt / app.admin)
+│       │   └── db/migration/       # V1__init_schema, V2__seed_cars, V3__auth_users, V4__fix_cars_sequence
 │       └── test/java/...           # JUnit 5 + Mockito
 ├── frontend/                       # React + Vite + TypeScript
 │   ├── package.json
@@ -76,9 +80,9 @@ Plataforma completa de venta de autos usados a nivel producción:
 │   └── src/
 │       ├── components/             # Navbar, CarCard, Filters, CartDrawer, AiChat…
 │       ├── hooks/                  # useCars, useDebounce
-│       ├── pages/                  # CatalogPage, AiConciergePage
-│       ├── services/api.ts         # cliente Axios tipado
-│       ├── store/cartStore.ts      # Zustand + persist (localStorage)
+│       ├── pages/                  # CatalogPage, AiConciergePage, LoginPage, AdminPage
+│       ├── services/api.ts         # cliente Axios tipado + interceptor JWT Bearer + 401
+│       ├── store/                  # cartStore + authStore (Zustand + persist)
 │       └── types/                  # interfaces TS estrictas
 ├── .env.example                    # plantilla de variables (0 secrets)
 ├── docker-compose.yml              # postgres + backend + frontend
@@ -103,6 +107,50 @@ Edita el archivo `.env` y pega tu clave:
 ```dotenv
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
+---
+
+## ⚙️ Ejecución local sin Docker (stack nativo — usado en esta máquina)
+
+> Docker Desktop no arranca en este equipo porque la **virtualización está desactivada en la BIOS**
+> (`HyperVisorPresent: False`, `HyperVRequirementVirtualizationFirmwareEnabled: False`).
+> Mientras tanto el proyecto corre con un stack nativo portable en `C:\driveai\.tools`
+> (JDK 17 + Maven 3.9 + PostgreSQL 16), sin Docker ni WSL.
+
+Arranque (o reinicio) de los tres servicios en el orden correcto:
+
+```bat
+:: 1) PostgreSQL portátil (puerto 5433)
+C:\driveai\.tools\start-db.bat
+
+:: 2) Backend Spring Boot (puerto 8080) — compila + arranca en ~30 s
+C:\driveai\.tools\start-backend.bat
+
+:: 3) Frontend Vite (puerto 5173)
+C:\driveai\.tools\start-frontend.bat
+```
+
+Servicios y puertos:
+
+| Servicio     | URL                             | Puerto | Logs                         |
+|--------------|---------------------------------|--------|------------------------------|
+| Frontend     | `http://localhost:5173`         | 5173   | `.tools/frontend.out.log`    |
+| Backend API  | `http://localhost:8080`         | 8080   | `.tools/backend.out.log`     |
+| Swagger UI   | `http://localhost:8080/swagger-ui.html` | 8080 | —                     |
+| PostgreSQL   | `jdbc:postgresql://localhost:5433/cardb` | 5433 | `.tools/pgdata/log/` |
+
+Notas:
+
+- El puerto **5433** se usa a propósito: hay un servicio `postgresql-x64-18` del sistema ocupando el 5432.
+- El backend arranca con `mvn spring-boot:run`; `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` se
+  inyectan por variables de entorno desde `start-backend.bat` (por eso `application.yml` mantiene
+  `localhost:5432` y aún así funciona).
+- `start-backend.bat` además inyecta `JWT_SECRET`, `GROQ_API_KEY`, `GROQ_MODEL` y las credenciales
+  `ADMIN_EMAIL`/`ADMIN_PASSWORD` del administrador inicial (se crea solo al primer arranque).
+- Credenciales demo locales: `admin@driveai.com` / `DriveAI#2026!` (definidas en `.env`, no versionado).
+- Para **habilitar Docker** en el futuro: activa la virtualización en la BIOS (Intel VT-x / AMD SVM),
+  ejecuta `wsl --install` y reinicia; luego `docker compose up -d --build`.
+- Verificación rápida de salud: `curl http://localhost:8080/actuator/health` → `{"status":"UP"}`.
 
 ---
 
@@ -213,18 +261,41 @@ Cobertura de pruebas unitarias (JUnit 5 + Mockito):
 | `OrderServiceTest`                     | Checkout: descuento de stock, merge de líneas, 404 y stock insuficiente |
 | `GroqAdvisorServiceTest`               | **Anti-alucinación** (filtra IDs inventados / sin stock), JSON corrupto, saturación, logs |
 | `RateLimitServiceTest`                 | Bucket4j: bloqueo tras límite y aislamiento de llaves |
+| `AuthServiceTest`                      | Registro/login, pwd incorrecta → 401, `ensureAdminAccount` idempotente |
+| `CarServiceTest`                       | CRUD admin: alta/edición, 404, borrado y conflicto cuando el auto tiene ventas |
+
+**26 tests** en total: `mvn test` → `BUILD SUCCESS`.
 
 ---
 
 ## 🔌 Endpoints principales
 
-### Catálogo — `/api/cars`
+### Autenticación — `/api/auth` (público)
+| Método | Ruta                  | Descripción |
+| ------ | --------------------- | ----------- |
+| POST   | `/api/auth/register`  | `{ email, password(8-72), fullName }` → crea `CUSTOMER`, devuelve `{ token, user }` (201) |
+| POST   | `/api/auth/login`     | `{ email, password }` → `{ token, user }`. Errores: 401 RFC 7807 |
+
+El `token` es un **JWT HS-384** con claims `uid`/`role` (subject = email) y se envía como
+`Authorization: Bearer <token>` (el interceptor de Axios lo agrega solo). Caduca a las
+`JWT_EXPIRATION_MINUTES` (default 1440).
+
+### Catálogo — `/api/cars` (**público**)
 | Método | Ruta            | Descripción |
 | ------ | --------------- | ----------- |
 | GET    | `/api/cars`     | Paginado + filtros: `brand`, `minPrice`, `maxPrice`, `minYear`, `fuelType`, `bodyType`, `q` |
 | GET    | `/api/cars/{id}` | Detalle (404 RFC 7807 si no existe) |
 
-### Carrito — `/api/cart` (anónimo por `sessionId`)
+### Catálogo — gestión (**solo `ADMIN`**)
+| Método | Ruta            | Descripción |
+| ------ | --------------- | ----------- |
+| POST   | `/api/cars`     | Alta de auto (validación en `CarWriteRequest`); 201 con el auto creado |
+| PUT    | `/api/cars/{id}` | Edición completa del auto; 404 si no existe |
+| DELETE | `/api/cars/{id}` | Borra el auto; **409** si ya tiene ventas (integridad referencial) |
+
+> Cualquier llamada a estos tres sin token de rol `ADMIN` → `401` (sin token) o `403` (rol insuficiente).
+
+### Carrito — `/api/cart` (requiere **Bearer**)
 | Método   | Ruta                       | Descripción |
 | -------- | -------------------------- | ----------- |
 | GET      | `/api/cart?sessionId=…`    | Contenido del carrito |
@@ -232,12 +303,12 @@ Cobertura de pruebas unitarias (JUnit 5 + Mockito):
 | PUT      | `/api/cart/update/{itemId}` | `{ quantity }` |
 | DELETE   | `/api/cart/remove/{itemId}` | Elimina la línea |
 
-### Órdenes — `/api/orders`
+### Órdenes — `/api/orders` (requiere **Bearer**)
 | Método | Ruta              | Descripción |
 | ------ | ----------------- | ----------- |
 | POST   | `/api/orders/checkout` | `{ sessionId, items:[{carId,quantity}] }` → valida stock (lock), descuenta inventario, orden `CONFIRMED` |
 
-### Asesor IA — `/api/ai`
+### Asesor IA — `/api/ai` (requiere **Bearer**)
 | Método | Ruta                | Descripción |
 | ------ | ------------------- | ----------- |
 | POST   | `/api/ai/recommend` | `{ prompt, sessionId }` → `{ sessionId, reasoning, recommendations[] }` |
@@ -247,8 +318,10 @@ Respuestas de error uniformes **RFC 7807** (`application/problem+json`):
 | Código | Caso                                   |
 | ------ | -------------------------------------- |
 | 400    | Validación de campos / JSON malformado |
+| 401    | Token ausente, inválido o expirado     |
+| 403    | Autenticado pero sin rol `ADMIN`       |
 | 404    | Recurso no encontrado                  |
-| 409    | Stock insuficiente                     |
+| 409    | Stock insuficiente / auto con ventas   |
 | 429    | Rate limit excedido (+ `Retry-After`)  |
 | 503    | Servicio de IA saturado/no disponible  |
 
@@ -270,9 +343,12 @@ Configuración (ver `application.yml` y `.env.example`):
 
 ```dotenv
 GROQ_API_KEY=…                        # clave de console.groq.com
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=groq/compound-mini
 GROQ_API_BASE_URL=https://api.groq.com/openai/v1
 RATE_LIMIT_PER_MINUTE=5
+JWT_SECRET=…                          # ≥32 bytes en Base64; fija entre reinicios
+ADMIN_EMAIL=admin@driveai.com         # cuenta admin inicial (auto-creada)
+ADMIN_PASSWORD=…                      # password del admin inicial
 ```
 
 ---
@@ -286,11 +362,15 @@ RATE_LIMIT_PER_MINUTE=5
 | `POSTGRES_PASSWORD`        | Contraseña de la base                              | `cardb_pass` (¡cámbiala en prod!) |
 | `POSTGRES_PORT`            | Puerto expuesto de PostgreSQL                      | `5432`                          |
 | `GROQ_API_KEY`             | API Key de Groq Cloud (obligatoria para la IA)     | *(vacía)*                       |
-| `GROQ_MODEL`               | Modelo LLM de Groq                                 | `llama-3.3-70b-versatile`       |
+| `GROQ_MODEL`               | Modelo LLM de Groq                                 | `groq/compound-mini`           |
 | `GROQ_API_BASE_URL`        | URL base compatible OpenAI                         | `https://api.groq.com/openai/v1` |
 | `SPRING_PROFILES_ACTIVE`   | Perfil Spring (`dev` / `prod`)                     | `dev`                           |
 | `SERVER_PORT`              | Puerto del backend                                 | `8080`                          |
 | `RATE_LIMIT_PER_MINUTE`    | Máx. recomendaciones IA por minuto por usuario     | `5`                             |
+| `JWT_SECRET`               | Secreto JWT (≥32 bytes, Base64)                    | *(vacío → aleatorio)*           |
+| `JWT_EXPIRATION_MINUTES`   | Expiración del token JWT (minutos)                 | `1440`                          |
+| `ADMIN_EMAIL`              | Email del admin creado en el primer arranque       | *(vacío → no se crea)*          |
+| `ADMIN_PASSWORD`           | Password del admin inicial                         | *(vacío → no se crea)*          |
 | `VITE_API_URL`             | URL absoluta de la API (vacío = mismo origen/proxy) | vacío                          |
 | `FRONTEND_PORT`            | Puerto del frontend en Docker                      | `5173`                          |
 
@@ -307,11 +387,18 @@ psql -h localhost -U cardb_user -d cardb -c 'select 1'
 ```
 
 **La IA devuelve `503`** → revisa `GROQ_API_KEY` en `.env` y el límite de la cuenta en
-console.groq.com. Con clave ausente el mensaje lo indica explícitamente.
+console.groq.com. Con clave ausente el mensaje lo indica explícitamente. Si da `404 model_not_found`,
+el modelo `GROQ_MODEL` fue deprecado (usa `groq/compound-mini`).
 
 **`429` en `/api/ai/recommend`** → estás superando `RATE_LIMIT_PER_MINUTE`; espera los segundos indicados (`Retry-After`).
 
 **El carrito "desaparece" al recargar** → es normal: se persiste en `localStorage` bajo la clave `driveai-cart`; usa siempre la misma sesión/navegador.
+
+**`401` en carrito/IA/checkout tras recargar** → la sesión JWT caducó (`JWT_EXPIRATION_MINUTES`) o el
+backend se reinició con `JWT_SECRET` vacío (tokens aleatorios). Configura `JWT_SECRET` fijo en `.env`.
+
+**El panel muestra "Acceso restringido"** → la cuenta con la que entraste es `CUSTOMER`; entra con
+`admin@driveai.com` (o la cuenta definida en `ADMIN_EMAIL`).
 
 **Puerto 5173 ocupado** → cambia `FRONTEND_PORT` en `.env`; en dev usa `npm run dev -- --port 5174`.
 
@@ -320,6 +407,6 @@ console.groq.com. Con clave ausente el mensaje lo indica explícitamente.
 ## 🛣️ Notas de producción
 
 - El rate limiter es **memo-in-memory** (Bucket4j, local al nodo). Para múltiples réplicas usa una implementación distribuida (Redis) manteniendo la misma interfaz `RateLimitService`.
-- Las contraseñas de BD y `GROQ_API_KEY` **nunca** se versionan; siempre via `.env`/secret manager.
+- Las contraseñas de BD, `GROQ_API_KEY` y `JWT_SECRET` **nunca** se versionan; siempre via `.env`/secret manager. La cuenta admin inicial se crea con `ADMIN_EMAIL`/`ADMIN_PASSWORD` del entorno (nunca en migraciones).
 - `ddl-auto=validate` evita desalineaciones entre el esquema Flyway y las entidades.
 - El checkout usa `PESSIMISTIC_WRITE` por auto: previene sobreventa bajo concurrencia.

@@ -2,25 +2,41 @@ import axios, { AxiosError } from 'axios'
 import type {
   AiRecommendRequest,
   AiRecommendResponse,
+  AuthResponse,
   Car,
   CarFilters,
+  CarWriteRequest,
   Cart,
   CartAddRequest,
   CartUpdateRequest,
   CheckoutRequest,
+  LoginRequest,
   Order,
   PageResponse,
+  RegisterRequest,
 } from '../types'
 
-const API_BASE_URL = (
-  import.meta.env.VITE_API_URL as string | undefined
-)?.replace(/\/$/, '')
+const rawApiUrl = import.meta.env.VITE_API_URL as string | undefined
+const API_BASE_URL = rawApiUrl ? rawApiUrl.replace(/\/$/, '') : '/api'
 
 export const api = axios.create({
   baseURL: API_BASE_URL ?? '',
   timeout: 45_000,
   headers: { 'Content-Type': 'application/json' },
 })
+
+const AUTH_TOKEN_KEY = 'driveai-token'
+let authToken: string | null =
+  typeof localStorage !== 'undefined' ? localStorage.getItem(AUTH_TOKEN_KEY) : null
+
+export function setAuthToken(token: string | null): void {
+  authToken = token
+  if (token) {
+    localStorage.setItem(AUTH_TOKEN_KEY, token)
+  } else {
+    localStorage.removeItem(AUTH_TOKEN_KEY)
+  }
+}
 
 export interface ApiError {
   message: string
@@ -57,10 +73,54 @@ export function normalizeError(error: unknown): ApiError {
   return { message: 'Algo salió mal. Inténtalo de nuevo.' }
 }
 
+api.interceptors.request.use((config) => {
+  if (authToken) {
+    config.headers.Authorization = `Bearer ${authToken}`
+  }
+  return config
+})
+
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => Promise.reject(normalizeError(error)),
+  (error: AxiosError) => {
+    const isAuthCall = error.config?.url?.includes('/auth/') ?? false
+    if (error.response?.status === 401 && !isAuthCall) {
+      setAuthToken(null)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('driveai:unauthorized'))
+      }
+    }
+    return Promise.reject(normalizeError(error))
+  },
 )
+
+// ───────────────────────── Autenticación ─────────────────────────
+
+export async function login(request: LoginRequest): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>('/auth/login', request)
+  return data
+}
+
+export async function register(request: RegisterRequest): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>('/auth/register', request)
+  return data
+}
+
+// ───────────────────────── Administración (admin) ─────────────────────────
+
+export async function createCar(request: CarWriteRequest): Promise<Car> {
+  const { data } = await api.post<Car>('/cars', request)
+  return data
+}
+
+export async function updateCar(id: number, request: CarWriteRequest): Promise<Car> {
+  const { data } = await api.put<Car>(`/cars/${id}`, request)
+  return data
+}
+
+export async function deleteCar(id: number): Promise<void> {
+  await api.delete(`/cars/${id}`)
+}
 
 // ───────────────────────── Catálogo ─────────────────────────
 

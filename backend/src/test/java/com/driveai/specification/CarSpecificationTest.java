@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -47,6 +48,8 @@ class CarSpecificationTest {
     @Mock
     private Path<Object> fuelTypePath;
     @Mock
+    private Path<Object> bodyTypePath;
+    @Mock
     private Expression<String> lowerBrand;
     @Mock
     private Expression<String> lowerModel;
@@ -58,25 +61,26 @@ class CarSpecificationTest {
     private Predicate conjunction;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        lenient().when(root.get("brand")).thenReturn(brandPath);
-        lenient().when(root.get("model")).thenReturn(modelPath);
-        lenient().when(root.get("description")).thenReturn(descriptionPath);
-        lenient().when(root.get("price")).thenReturn(pricePath);
-        lenient().when(root.get("year")).thenReturn(yearPath);
-        lenient().when(root.get("fuelType")).thenReturn(fuelTypePath);
+        lenient().when(root.get("brand")).thenAnswer(inv -> brandPath);
+        lenient().when(root.get("model")).thenAnswer(inv -> modelPath);
+        lenient().when(root.get("description")).thenAnswer(inv -> descriptionPath);
+        lenient().when(root.get("price")).thenAnswer(inv -> pricePath);
+        lenient().when(root.get("year")).thenAnswer(inv -> yearPath);
+        lenient().when(root.get("fuelType")).thenAnswer(inv -> fuelTypePath);
+        lenient().when(root.get("bodyType")).thenAnswer(inv -> bodyTypePath);
 
         lenient().when(cb.lower(brandPath)).thenReturn(lowerBrand);
         lenient().when(cb.lower(modelPath)).thenReturn(lowerModel);
         lenient().when(cb.lower(descriptionPath)).thenReturn(lowerDescription);
 
-        lenient().when(cb.equal(lowerBrand, "toyota")).thenReturn(predicate);
-        lenient().when(cb.equal(any(), any())).thenReturn(predicate);
-        lenient().when(cb.equal(fuelTypePath, FuelType.DIESEL)).thenReturn(predicate);
-        lenient().when(cb.greaterThanOrEqualTo(any(), any())).thenReturn(predicate);
-        lenient().when(cb.lessThanOrEqualTo(any(), any())).thenReturn(predicate);
-        lenient().when(cb.like(any(), any())).thenReturn(predicate);
-        lenient().when(cb.or(any(), any())).thenReturn(predicate);
+        // Matchers tipados: evitan que el overload de CriteriaBuilder sea ambiguo.
+        lenient().when(cb.equal(any(Expression.class), any(Object.class))).thenReturn(predicate);
+        lenient().when(cb.greaterThanOrEqualTo(any(Expression.class), any(BigDecimal.class))).thenReturn(predicate);
+        lenient().when(cb.lessThanOrEqualTo(any(Expression.class), any(BigDecimal.class))).thenReturn(predicate);
+        lenient().when(cb.like(any(Expression.class), anyString())).thenReturn(predicate);
+        lenient().when(cb.or(any(Predicate.class), any(Predicate.class))).thenReturn(predicate);
         lenient().when(cb.and(any(Predicate[].class))).thenReturn(conjunction);
     }
 
@@ -87,10 +91,10 @@ class CarSpecificationTest {
         Predicate result = spec.toPredicate(root, null, cb);
 
         assertThat(result).isSameAs(conjunction);
-        verify(cb, never()).equal(any(), any());
-        verify(cb, never()).greaterThanOrEqualTo(any(), any());
-        verify(cb, never()).lessThanOrEqualTo(any(), any());
-        verify(cb, never()).like(any(), any());
+        verify(cb, never()).equal(any(Expression.class), any(Object.class));
+        verify(cb, never()).greaterThanOrEqualTo(any(Expression.class), any(BigDecimal.class));
+        verify(cb, never()).lessThanOrEqualTo(any(Expression.class), any(BigDecimal.class));
+        verify(cb, never()).like(any(Expression.class), anyString());
     }
 
     @Test
@@ -124,7 +128,7 @@ class CarSpecificationTest {
         verify(cb).lower(brandPath);
         verify(cb).lower(modelPath);
         verify(cb).lower(descriptionPath);
-        verify(cb, times(3)).like(any(), eq("%suv%"));
+        verify(cb, times(3)).like(any(Expression.class), eq("%suv%"));
     }
 
     @Test

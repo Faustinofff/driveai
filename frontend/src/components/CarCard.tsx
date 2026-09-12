@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Calendar, Check, Fuel, Gauge, Plus } from 'lucide-react'
+import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 import type { Car } from '../types'
 import {
@@ -12,16 +13,22 @@ import { formatConsumption, formatMileage, formatMoney } from '../utils/formatte
 
 interface CarCardProps {
   car: Car
+  onRequireLogin?: () => void
 }
 
-export function CarCard({ car }: CarCardProps) {
+export function CarCard({ car, onRequireLogin }: CarCardProps) {
   const add = useCartStore((state) => state.add)
+  const isAuthenticated = useAuthStore((state) => state.token !== null && state.user !== null)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [justAdded, setJustAdded] = useState(false)
   const outOfStock = car.stock <= 0
 
   const handleAdd = () => {
     if (outOfStock) return
+    if (!isAuthenticated) {
+      onRequireLogin?.()
+      return
+    }
     add(car)
     setJustAdded(true)
     window.setTimeout(() => setJustAdded(false), 1200)

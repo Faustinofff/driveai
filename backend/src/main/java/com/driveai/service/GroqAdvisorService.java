@@ -182,6 +182,11 @@ public class GroqAdvisorService {
     }
 
     private void persistLog(String sessionId, String prompt, String response,
+                            String status, String errorMessage) {
+        persistLog(sessionId, prompt, response, (String) null, status, errorMessage);
+    }
+
+    private void persistLog(String sessionId, String prompt, String response,
                             String carIdsJson, String status, String errorMessage) {
         AiRecommendationLog log = AiRecommendationLog.builder()
                 .sessionId(sessionId)

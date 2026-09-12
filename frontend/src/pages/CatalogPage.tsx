@@ -8,6 +8,7 @@ import type { CarFilters } from '../types'
 
 interface CatalogPageProps {
   q: string
+  onRequireLogin: () => void
 }
 
 const SKELETON_COUNT = 8
@@ -45,7 +46,7 @@ function filtersToSearch(filters: CarFilters): string {
   return value ? `?${value}` : ''
 }
 
-export function CatalogPage({ q }: CatalogPageProps) {
+export function CatalogPage({ q, onRequireLogin }: CatalogPageProps) {
   const [filters, setFilters] = useState<CarFilters>(() => readFiltersFromURL())
   const [page, setPage] = useState(0)
 
@@ -138,7 +139,7 @@ export function CatalogPage({ q }: CatalogPageProps) {
           {query.data && !isLoading && !isEmpty && (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {query.data.content.map((car) => (
-                <CarCard key={car.id} car={car} />
+                <CarCard key={car.id} car={car} onRequireLogin={onRequireLogin} />
               ))}
             </div>
           )}
