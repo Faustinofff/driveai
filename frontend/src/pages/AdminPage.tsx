@@ -96,7 +96,7 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
     setError(null)
     try {
       if (car) {
-        await updateCar(car.id, toRequest(draft))
+        await updateCar(car.id, toRequest(draft), car.version)
       } else {
         await createCar(toRequest(draft))
       }
@@ -133,8 +133,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Marca</label>
+            <label htmlFor="car-brand" className="mb-1 block text-xs font-medium text-slate-500">Marca</label>
             <input
+              id="car-brand"
               type="text"
               value={draft.brand}
               onChange={(event) => update({ brand: event.target.value })}
@@ -144,8 +145,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Modelo</label>
+            <label htmlFor="car-model" className="mb-1 block text-xs font-medium text-slate-500">Modelo</label>
             <input
+              id="car-model"
               type="text"
               value={draft.model}
               onChange={(event) => update({ model: event.target.value })}
@@ -155,8 +157,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Año</label>
+            <label htmlFor="car-year" className="mb-1 block text-xs font-medium text-slate-500">Año</label>
             <input
+              id="car-year"
               type="number"
               min={1900}
               max={2100}
@@ -167,8 +170,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Precio (USD)</label>
+            <label htmlFor="car-price" className="mb-1 block text-xs font-medium text-slate-500">Precio (USD)</label>
             <input
+              id="car-price"
               type="number"
               min={0.01}
               step="0.01"
@@ -179,8 +183,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Kilometraje</label>
+            <label htmlFor="car-mileage" className="mb-1 block text-xs font-medium text-slate-500">Kilometraje</label>
             <input
+              id="car-mileage"
               type="number"
               min={0}
               value={draft.mileage}
@@ -190,8 +195,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Stock</label>
+            <label htmlFor="car-stock" className="mb-1 block text-xs font-medium text-slate-500">Stock</label>
             <input
+              id="car-stock"
               type="number"
               min={0}
               value={draft.stock}
@@ -201,8 +207,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Combustible</label>
+            <label htmlFor="car-fuel" className="mb-1 block text-xs font-medium text-slate-500">Combustible</label>
             <select
+              id="car-fuel"
               value={draft.fuelType}
               onChange={(event) => update({ fuelType: event.target.value as FuelType })}
               className="input-base"
@@ -215,10 +222,11 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">
+            <label htmlFor="car-consumption" className="mb-1 block text-xs font-medium text-slate-500">
               Consumo (L/100km)
             </label>
             <input
+              id="car-consumption"
               type="number"
               min={0}
               step="0.1"
@@ -229,8 +237,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Transmisión</label>
+            <label htmlFor="car-transmission" className="mb-1 block text-xs font-medium text-slate-500">Transmisión</label>
             <select
+              id="car-transmission"
               value={draft.transmission}
               onChange={(event) => update({ transmission: event.target.value as Transmission })}
               className="input-base"
@@ -243,8 +252,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Carrocería</label>
+            <label htmlFor="car-body" className="mb-1 block text-xs font-medium text-slate-500">Carrocería</label>
             <select
+              id="car-body"
               value={draft.bodyType}
               onChange={(event) => update({ bodyType: event.target.value as BodyType })}
               className="input-base"
@@ -257,8 +267,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             </select>
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-slate-500">URL de imagen</label>
+            <label htmlFor="car-image" className="mb-1 block text-xs font-medium text-slate-500">URL de imagen</label>
             <input
+              id="car-image"
               type="url"
               value={draft.imageUrl}
               onChange={(event) => update({ imageUrl: event.target.value })}
@@ -268,8 +279,9 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-slate-500">Descripción</label>
+            <label htmlFor="car-description" className="mb-1 block text-xs font-medium text-slate-500">Descripción</label>
             <textarea
+              id="car-description"
               value={draft.description}
               onChange={(event) => update({ description: event.target.value })}
               rows={3}

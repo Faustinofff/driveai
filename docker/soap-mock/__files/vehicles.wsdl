@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/"
+             xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+             xmlns:tns="http://driveai.com/soap/vehicles"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+             targetNamespace="http://driveai.com/soap/vehicles"
+             name="VehicleQuoteService">
+
+  <types>
+    <xsd:schema targetNamespace="http://driveai.com/soap/vehicles">
+      <xsd:element name="GetVehicleQuoteRequest">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="vehicleId" type="xsd:long"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="GetVehicleQuoteResponse">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="available" type="xsd:boolean"/>
+            <xsd:element name="quote" type="xsd:decimal"/>
+            <xsd:element name="currency" type="xsd:string"/>
+            <xsd:element name="message" type="xsd:string" minOccurs="0"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+      <xsd:element name="VehicleQuoteFault">
+        <xsd:complexType>
+          <xsd:sequence>
+            <xsd:element name="code" type="xsd:string"/>
+            <xsd:element name="message" type="xsd:string"/>
+          </xsd:sequence>
+        </xsd:complexType>
+      </xsd:element>
+    </xsd:schema>
+  </types>
+
+  <message name="GetVehicleQuoteInput">
+    <part name="parameters" element="tns:GetVehicleQuoteRequest"/>
+  </message>
+  <message name="GetVehicleQuoteOutput">
+    <part name="parameters" element="tns:GetVehicleQuoteResponse"/>
+  </message>
+  <message name="VehicleQuoteFaultMessage">
+    <part name="parameters" element="tns:VehicleQuoteFault"/>
+  </message>
+
+  <portType name="VehicleQuotePortType">
+    <operation name="getVehicleQuote">
+      <input message="tns:GetVehicleQuoteInput"/>
+      <output message="tns:GetVehicleQuoteOutput"/>
+      <fault name="VehicleQuoteFault" message="tns:VehicleQuoteFaultMessage"/>
+    </operation>
+  </portType>
+
+  <binding name="VehicleQuoteBinding" type="tns:VehicleQuotePortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <operation name="getVehicleQuote">
+      <soap:operation soapAction="getVehicleQuote"/>
+      <input>
+        <soap:body use="literal"/>
+      </input>
+      <output>
+        <soap:body use="literal"/>
+      </output>
+      <fault name="VehicleQuoteFault">
+        <soap:fault name="VehicleQuoteFault" use="literal"/>
+      </fault>
+    </operation>
+  </binding>
+
+  <service name="VehicleQuoteService">
+    <port name="VehicleQuotePort" binding="tns:VehicleQuoteBinding">
+      <soap:address location="http://localhost:8089/soap/vehicles"/>
+    </port>
+  </service>
+</definitions>

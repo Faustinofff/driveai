@@ -114,8 +114,17 @@ class AuthServiceTest {
     }
 
     @Test
-    void ensureAdminAccountCreatesAdminOnceWhenNotExists() {
-        when(appProperties.admin()).thenReturn(new AppProperties.Admin("Admin@Driveai.com", "AdminPass123!"));
+    void ensureAdminAccountDoesNothingWhenAdminAlreadyExists() {
+        when(appProperties.admin()).thenReturn(new AppProperties.Admin("admin@driveai.com", "AdminPass123!"));
+        when(userRepository.existsByEmailIgnoreCase("admin@driveai.com")).thenReturn(true);
+
+        authService.ensureAdminAccount();
+
+        org.mockito.Mockito.verify(userRepository, org.mockito.Mockito.never()).save(any(AppUser.class));
+    }
+
+    @Test
+    void ensureAdminAccountCreatesAdminOnceWhenNotExists() {        when(appProperties.admin()).thenReturn(new AppProperties.Admin("Admin@Driveai.com", "AdminPass123!"));
         when(userRepository.existsByEmailIgnoreCase("admin@driveai.com")).thenReturn(false);
         when(passwordEncoder.encode("AdminPass123!")).thenReturn("$2a$admin");
         when(userRepository.save(any(AppUser.class))).thenAnswer(invocation -> invocation.getArgument(0));

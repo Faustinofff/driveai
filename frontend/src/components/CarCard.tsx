@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Calendar, Check, Fuel, Gauge, Plus } from 'lucide-react'
+import { Calendar, Check, Eye, Fuel, Gauge, Plus } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useCartStore } from '../store/cartStore'
 import type { Car } from '../types'
+import { CarDetailModal } from './CarDetailModal'
 import {
   BODY_LABELS,
   FUEL_COLORS,
@@ -21,6 +22,7 @@ export function CarCard({ car, onRequireLogin }: CarCardProps) {
   const isAuthenticated = useAuthStore((state) => state.token !== null && state.user !== null)
   const [imageLoaded, setImageLoaded] = useState(false)
   const [justAdded, setJustAdded] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
   const outOfStock = car.stock <= 0
 
   const handleAdd = () => {
@@ -57,13 +59,30 @@ export function CarCard({ car, onRequireLogin }: CarCardProps) {
             Agotado
           </span>
         )}
+        <button
+          type="button"
+          onClick={() => setDetailOpen(true)}
+          className="absolute inset-0 flex items-end justify-end p-3 focus:outline-none"
+          aria-label={`Ver detalle de ${car.brand} ${car.model}`}
+        >
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-slate-700 opacity-0 shadow-sm transition group-hover:opacity-100 focus:opacity-100">
+            <Eye className="h-3.5 w-3.5" />
+            Ver detalle
+          </span>
+        </button>
       </div>
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-2">
           <div>
             <h3 className="text-base font-bold text-slate-900">
-              {car.brand} {car.model}
+              <button
+                type="button"
+                onClick={() => setDetailOpen(true)}
+                className="text-left transition hover:text-brand-700"
+              >
+                {car.brand} {car.model}
+              </button>
             </h3>
             <p className="text-sm text-slate-500">{BODY_LABELS[car.bodyType]}</p>
           </div>
@@ -106,6 +125,15 @@ export function CarCard({ car, onRequireLogin }: CarCardProps) {
           {justAdded ? 'Agregado' : outOfStock ? 'Sin stock' : 'Agregar al carrito'}
         </button>
       </div>
+
+      {detailOpen && (
+        <CarDetailModal
+          car={car}
+          added={justAdded}
+          onClose={() => setDetailOpen(false)}
+          onAdd={handleAdd}
+        />
+      )}
     </article>
   )
 }

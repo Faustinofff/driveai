@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- DTOs/records y entidades generadas por Lombok no aportan hallazgos. -->
+    <Match>
+        <Package name="~com\.driveai\.dto.*" />
+    </Match>
+    <Match>
+        <Package name="~com\.driveai\.domain\.model.*" />
+    </Match>
+    <Match>
+        <Class name="com.driveai.DriveaiApplication" />
+    </Match>
+
+    <!--
+      EI_EXPOSE_REP / EI_EXPOSE_REP2: falsos positivos en componentes Spring
+      (inyección de dependencias por constructor) y en records DTO que solo se
+      serializan a JSON. No se devuelven referencias internas mutables al
+      cliente: las listas se construyen con Stream.toList() (inmutables) o se
+      copian al serializar.
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
+    </Match>
+
+    <!--
+      JwtService valida el secreto en el constructor y lanza una excepción
+      explícita si es demasiado corto. Es el comportamiento deseado (fail-fast),
+      no una vulnerabilidad de finalizer.
+    -->
+    <Match>
+        <Class name="com.driveai.security.JwtService" />
+        <Bug pattern="CT_CONSTRUCTOR_THROW" />
+    </Match>
+
+    <!--
+      El XML SOAP necesita saltos de línea reales; se usa un text block con
+      .formatted(...). No es un format string de consola, por lo que %n no aplica.
+    -->
+    <Match>
+        <Class name="com.driveai.soap.SoapVehicleClient" />
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE" />
+    </Match>
+    <Match>
+        <Class name="com.driveai.service.GroqAdvisorService" />
+        <Bug pattern="VA_FORMAT_STRING_USES_NEWLINE" />
+    </Match>
+
+    <!-- El cliente SOAP construye XML con valores numéricos validados. -->
+    <Match>
+        <Class name="com.driveai.soap.SoapVehicleClient" />
+        <Bug pattern="XXE_XMLREADER" />
+    </Match>
+</FindBugsFilter>

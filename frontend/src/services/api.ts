@@ -17,7 +17,20 @@ import type {
 } from '../types'
 
 const rawApiUrl = import.meta.env.VITE_API_URL as string | undefined
-const API_BASE_URL = rawApiUrl ? rawApiUrl.replace(/\/$/, '') : '/api'
+
+/**
+ * VITE_API_URL acepta tanto el origen del backend (http://localhost:8080)
+ * como la URL que ya incluye el prefijo /api (http://localhost:8080/api).
+ * Normalizamos para que los endpoints se concatenen siempre igual y evitar
+ * llamadas a /cars en lugar de /api/cars cuando se configura el origen.
+ */
+function resolveApiBaseUrl(raw?: string): string {
+  if (!raw) return '/api'
+  const trimmed = raw.replace(/\/+$/, '')
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
+}
+
+const API_BASE_URL = resolveApiBaseUrl(rawApiUrl)
 
 export const api = axios.create({
   baseURL: API_BASE_URL ?? '',
@@ -113,8 +126,10 @@ export async function createCar(request: CarWriteRequest): Promise<Car> {
   return data
 }
 
-export async function updateCar(id: number, request: CarWriteRequest): Promise<Car> {
-  const { data } = await api.put<Car>(`/cars/${id}`, request)
+export async function updateCar(id: number, request: CarWriteRequest, version?: number): Promise<Car> {
+  const { data } = await api.put<Car>(`/cars/${id}`, request, {
+    headers: version !== undefined ? { 'If-Match': `"${version}"` } : undefined,
+  })
   return data
 }
 
@@ -155,8 +170,8 @@ export async function getCar(id: number): Promise<Car> {
 
 // ───────────────────────── Carrito ─────────────────────────
 
-export async function getCart(sessionId: string): Promise<Cart> {
-  const { data } = await api.get<Cart>('/cart', { params: { sessionId } })
+export async function getCart(): Promise<Cart> {
+  const { data } = await api.get<Cart>('/cart')
   return data
 }
 
@@ -165,20 +180,42 @@ export async function addToCart(request: CartAddRequest): Promise<Cart> {
   return data
 }
 
-export async function updateCartItem(itemId: number, sessionId: string, request: CartUpdateRequest): Promise<Cart> {
-  const { data } = await api.put<Cart>(`/cart/update/${itemId}`, request, { params: { sessionId } })
+export async function updateCartItem(itemId: number, request: CartUpdateRequest): Promise<Cart> {
+  const { data } = await api.put<Cart>(`/cart/update/${itemId}`, request)
   return data
 }
 
-export async function removeCartItem(itemId: number, sessionId: string): Promise<Cart> {
-  const { data } = await api.delete<Cart>(`/cart/remove/${itemId}`, { params: { sessionId } })
+export async function removeCartItem(itemId: number): Promise<Cart> {
+  const { data } = await api.delete<Cart>(`/cart/remove/${itemId}`)
   return data
 }
 
 // ───────────────────────── Órdenes ─────────────────────────
 
-export async function checkout(request: CheckoutRequest): Promise<Order> {
-  const { data } = await api.post<Order>('/orders/checkout', request)
+function newIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID()
+  }
+  return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+export async function checkout(
+  request: CheckoutRequest,
+  idempotencyKey: string = newIdempotencyKey(),
+): Promise<Order> {
+  const { data } = await api.post<Order>('/orders/checkout', request, {
+    headers: { 'Idempotency-Key': idempotencyKey },
+  })
+  return data
+}
+
+export async function listOrders(): Promise<Order[]> {
+  const { data } = await api.get<Order[]>('/orders')
+  return data
+}
+
+export async function cancelOrder(id: number): Promise<Order> {
+  const { data } = await api.post<Order>(`/orders/${id}/cancel`)
   return data
 }
 

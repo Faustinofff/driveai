@@ -9,7 +9,7 @@ import java.util.List;
 
 public record OrderResponse(
         Long id,
-        String sessionId,
+        Long userId,
         OrderStatus status,
         BigDecimal totalAmount,
         List<OrderItemResponse> items,
@@ -21,7 +21,7 @@ public record OrderResponse(
                 .toList();
         return new OrderResponse(
                 order.getId(),
-                order.getSessionId(),
+                order.getUserId(),
                 order.getStatus(),
                 order.getTotalAmount(),
                 items,

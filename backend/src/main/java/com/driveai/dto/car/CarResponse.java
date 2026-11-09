@@ -20,7 +20,8 @@ public record CarResponse(
         BodyType bodyType,
         String imageUrl,
         String description,
-        Integer stock) {
+        Integer stock,
+        Long version) {
 
     public static CarResponse from(Car car) {
         return new CarResponse(
@@ -36,6 +37,7 @@ public record CarResponse(
                 car.getBodyType(),
                 car.getImageUrl(),
                 car.getDescription(),
-                car.getStock());
+                car.getStock(),
+                car.getVersion());
     }
 }

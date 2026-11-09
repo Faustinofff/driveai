@@ -208,7 +208,7 @@ export function AiChat() {
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-md">
                   <Bot className="h-5 w-5" />
                 </span>
-                <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-amber-200 bg-amber-50 px-4 py-3 shadow-sm">
+                <div className="max-w-[85%] rounded-2xl rounded-tl-sm border border-amber-200 bg-amber-50 px-4 py-3 shadow-sm" data-testid="ai-error-message">
                   <div className="flex items-start gap-2">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                     <p className="text-sm text-amber-800">{message.content}</p>
@@ -233,7 +233,7 @@ export function AiChat() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-md">
                 <Bot className="h-5 w-5" />
               </span>
-              <div className="max-w-[85%] space-y-3">
+              <div className="max-w-[85%] space-y-3" data-testid="ai-assistant-message">
                 {message.content && (
                   <div className="rounded-2xl rounded-tl-sm bg-slate-50 px-4 py-3 text-sm text-slate-800 shadow-sm ring-1 ring-slate-200">
                     <p className="whitespace-pre-line leading-relaxed">{message.content}</p>

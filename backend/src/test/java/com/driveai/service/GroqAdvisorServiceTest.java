@@ -121,6 +121,66 @@ class GroqAdvisorServiceTest {
         verify(logRepository).save(any(AiRecommendationLog.class));
     }
 
+    @Test
+    void textualNumericIdsAreAcceptedAndInvalidStringsDropped() {
+        Car real = car(3L, 4);
+        when(carRepository.findByStockGreaterThan(0)).thenReturn(List.of(real));
+        when(groqApiClient.chatCompletion(anyString(), anyString()))
+                .thenReturn("{\"reasoning\":\"ok\",\"recommendedCarIds\":[\"3\",\"abc\",null]}");
+        when(carRepository.findAllById(List.of(3L))).thenReturn(List.of(real));
+
+        AiRecommendResponse response = advisorService.recommend("auto", "s", "s|ip");
+
+        assertThat(response.recommendations()).extracting(item -> item.id()).containsExactly(3L);
+    }
+
+    @Test
+    void duplicatesAreCollapsedAndAtMostFiveCarsAreRecommended() {
+        List<Car> cars = List.of(
+                car(1L, 1), car(2L, 1), car(3L, 1), car(4L, 1), car(5L, 1), car(6L, 1));
+        when(carRepository.findByStockGreaterThan(0)).thenReturn(cars);
+        when(groqApiClient.chatCompletion(anyString(), anyString()))
+                .thenReturn("{\"reasoning\":\"ok\",\"recommendedCarIds\":[1,1,2,3,4,5,6]}");
+        when(carRepository.findAllById(List.of(1L, 2L, 3L, 4L, 5L))).thenReturn(cars);
+
+        AiRecommendResponse response = advisorService.recommend("auto", "s", "s|ip");
+
+        assertThat(response.recommendations()).hasSize(5);
+        verify(carRepository).findAllById(List.of(1L, 2L, 3L, 4L, 5L));
+    }
+
+    @Test
+    void nonObjectJsonIsRejected() {
+        when(carRepository.findByStockGreaterThan(0)).thenReturn(List.of());
+        when(groqApiClient.chatCompletion(anyString(), anyString())).thenReturn("[1,2,3]");
+
+        assertThatThrownBy(() -> advisorService.recommend("auto", "s", "s|ip"))
+                .isInstanceOf(GroqApiException.class)
+                .hasMessageContaining("respuesta inválida");
+    }
+
+    @Test
+    void missingRecommendedIdsIsRejected() {
+        when(carRepository.findByStockGreaterThan(0)).thenReturn(List.of());
+        when(groqApiClient.chatCompletion(anyString(), anyString()))
+                .thenReturn("{\"reasoning\":\"ok\"}");
+
+        assertThatThrownBy(() -> advisorService.recommend("auto", "s", "s|ip"))
+                .isInstanceOf(GroqApiException.class)
+                .hasMessageContaining("recomendaciones válidas");
+    }
+
+    @Test
+    void reasoningMayBeMissing() {
+        when(carRepository.findByStockGreaterThan(0)).thenReturn(List.of());
+        when(groqApiClient.chatCompletion(anyString(), anyString()))
+                .thenReturn("{\"recommendedCarIds\":[]}");
+
+        AiRecommendResponse response = advisorService.recommend("auto", "s", "s|ip");
+
+        assertThat(response.reasoning()).isNull();
+    }
+
     private static Car car(Long id, int stock) {
         return Car.builder()
                 .id(id)

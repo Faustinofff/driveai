@@ -1,0 +1,17 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "POST",
+    "urlPath": "/soap/vehicles",
+    "bodyPatterns": [
+      { "contains": "<veh:vehicleId>999</veh:vehicleId>" }
+    ]
+  },
+  "response": {
+    "status": 500,
+    "headers": {
+      "Content-Type": "text/xml; charset=utf-8"
+    },
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\"><soapenv:Body><soapenv:Fault><faultcode>soapenv:Client</faultcode><faultstring>NOT_AVAILABLE</faultstring><detail><code>NOT_AVAILABLE</code><message>El vehiculo no esta disponible para cotizacion</message></detail></soapenv:Fault></soapenv:Body></soapenv:Envelope>"
+  }
+}

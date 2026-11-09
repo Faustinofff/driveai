@@ -3,8 +3,11 @@ package com.driveai.advice;
 import com.driveai.exception.ConflictException;
 import com.driveai.exception.GroqApiException;
 import com.driveai.exception.InsufficientStockException;
+import com.driveai.exception.PreconditionFailedException;
 import com.driveai.exception.RateLimitExceededException;
 import com.driveai.exception.ResourceNotFoundException;
+import com.driveai.exception.SoapBusinessException;
+import com.driveai.exception.SoapTechnicalException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -39,6 +42,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ProblemDetail> handleConflict(ConflictException ex) {
         return problem(HttpStatus.CONFLICT, "Conflicto", ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(PreconditionFailedException.class)
+    public ResponseEntity<ProblemDetail> handlePreconditionFailed(PreconditionFailedException ex) {
+        return problem(HttpStatus.PRECONDITION_FAILED, "Precondición fallida", ex.getMessage(), null);
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -76,6 +84,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(GroqApiException.class)
     public ResponseEntity<ProblemDetail> handleGroq(GroqApiException ex) {
         return problem(HttpStatus.SERVICE_UNAVAILABLE, "Servicio de IA no disponible", ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(SoapBusinessException.class)
+    public ResponseEntity<ProblemDetail> handleSoapBusiness(SoapBusinessException ex) {
+        return problem(HttpStatus.CONFLICT, "Cotización no disponible", ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(SoapTechnicalException.class)
+    public ResponseEntity<ProblemDetail> handleSoapTechnical(SoapTechnicalException ex) {
+        log.warn("Fallo técnico del servicio SOAP: {}", ex.getMessage());
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "Servicio externo no disponible",
+                "El servicio de cotización no está disponible en este momento.", null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -6,6 +6,7 @@ import com.driveai.domain.enums.Transmission;
 import com.driveai.domain.model.Car;
 import com.driveai.dto.car.CarWriteRequest;
 import com.driveai.exception.ConflictException;
+import com.driveai.exception.PreconditionFailedException;
 import com.driveai.exception.ResourceNotFoundException;
 import com.driveai.repository.CarRepository;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -73,6 +75,39 @@ class CarServiceTest {
 
         assertThatThrownBy(() -> carService.update(99L, request()))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void updateWithMatchingIfMatchSucceeds() {
+        Car existing = Car.builder().id(9L).brand("Mazda").model("3").year(2020).version(3L).build();
+        when(carRepository.findById(9L)).thenReturn(Optional.of(existing));
+        when(carRepository.save(any(Car.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Car updated = carService.update(9L, request(), "\"3\"");
+
+        assertThat(updated.getModel()).isEqualTo("3 Sport");
+    }
+
+    @Test
+    void updateWithWeakEtagSucceeds() {
+        Car existing = Car.builder().id(9L).brand("Mazda").model("3").year(2020).version(3L).build();
+        when(carRepository.findById(9L)).thenReturn(Optional.of(existing));
+        when(carRepository.save(any(Car.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Car updated = carService.update(9L, request(), "W/\"3\"");
+
+        assertThat(updated.getYear()).isEqualTo(2024);
+    }
+
+    @Test
+    void updateWithStaleIfMatchThrowsPreconditionFailed() {
+        Car existing = Car.builder().id(9L).brand("Mazda").model("3").year(2020).version(3L).build();
+        when(carRepository.findById(9L)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> carService.update(9L, request(), "\"2\""))
+                .isInstanceOf(PreconditionFailedException.class)
+                .hasMessageContaining("modificado");
+        verify(carRepository, never()).save(any(Car.class));
     }
 
     @Test
