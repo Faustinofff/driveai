@@ -121,10 +121,14 @@ export function LoginPage({ onSuccess, notice }: LoginPageProps) {
       >
         {mode === 'register' && (
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">
+            <label
+              htmlFor="login-full-name"
+              className="mb-1 block text-xs font-medium text-slate-500"
+            >
               Nombre completo
             </label>
             <input
+              id="login-full-name"
               type="text"
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
@@ -136,10 +140,14 @@ export function LoginPage({ onSuccess, notice }: LoginPageProps) {
         )}
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">
+          <label
+            htmlFor="login-email"
+            className="mb-1 block text-xs font-medium text-slate-500"
+          >
             Correo electrónico
           </label>
           <input
+            id="login-email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -150,8 +158,14 @@ export function LoginPage({ onSuccess, notice }: LoginPageProps) {
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Contraseña</label>
+          <label
+            htmlFor="login-password"
+            className="mb-1 block text-xs font-medium text-slate-500"
+          >
+            Contraseña
+          </label>
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}

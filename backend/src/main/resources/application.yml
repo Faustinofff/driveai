@@ -2,7 +2,8 @@
 # DriveAI Backend — Configuración central (multi-perfil)
 #
 #   dev  → valores por defecto apuntan a localhost (docker compose up -d postgres)
-#   prod → espera SPRING_DATASOURCE_* y GROQ_API_KEY inyectadas por el entorno
+#   prod → exige variables obligatorias; si falta una, el arranque falla con
+#          un mensaje explícito (formato ${VAR:?mensaje}).
 # ============================================================================
 
 spring:
@@ -27,6 +28,22 @@ spring:
     time-zone: UTC
     serialization:
       write-dates-as-timestamps: false
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: "${RABBITMQ_USER:guest}"
+    password: "${RABBITMQ_PASSWORD:guest}"
+    virtual-host: ${RABBITMQ_VHOST:/}
+    connection-timeout: 3s
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1s
+          multiplier: 2
+          max-interval: 5s
 
 server:
   port: ${SERVER_PORT:8080}
@@ -53,23 +70,67 @@ management:
 groq:
   api:
     base-url: ${GROQ_API_BASE_URL:https://api.groq.com/openai/v1}
-    api-key: ${GROQ_API_KEY:}
+    api-key: "${GROQ_API_KEY:}"
     model: ${GROQ_MODEL:groq/compound-mini}
-    connect-timeout-seconds: 10
-    read-timeout-seconds: 40
+    # Timeout externo acotado a 5 s (requisito de resiliencia).
+    connect-timeout-seconds: ${GROQ_CONNECT_TIMEOUT_SECONDS:5}
+    read-timeout-seconds: ${GROQ_READ_TIMEOUT_SECONDS:5}
     max-tokens: 1024
     temperature: 0.2
 
-# ===== Seguridad / JWT / admin inicial / rate limiting (Bucket4j) =====
+# ===== Servicio SOAP externo (mock controlable en docker compose) =====
 app:
   jwt:
-    secret: ${JWT_SECRET:}
+    secret: "${JWT_SECRET:}"
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:1440}
+    issuer: ${JWT_ISSUER:driveai}
   admin:
-    email: ${ADMIN_EMAIL:}
-    password: ${ADMIN_PASSWORD:}
+    email: "${ADMIN_EMAIL:}"
+    password: "${ADMIN_PASSWORD:}"
   rate-limit:
     requests-per-minute: ${RATE_LIMIT_PER_MINUTE:5}
+  login-rate-limit:
+    requests-per-minute: ${LOGIN_RATE_LIMIT_PER_MINUTE:5}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:4173}
+  soap:
+    base-url: ${SOAP_BASE_URL:http://localhost:8089}
+    path: ${SOAP_PATH:/soap/vehicles}
+  outbox:
+    enabled: ${OUTBOX_ENABLED:true}
+    publish-interval-ms: ${OUTBOX_PUBLISH_INTERVAL_MS:2000}
+
+# ===== Resiliencia: reintento acotado + circuit breaker + fallback =====
+resilience4j:
+  circuitbreaker:
+    instances:
+      groq:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      soap:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+        permittedNumberOfCallsInHalfOpenState: 3
+        ignoreExceptions:
+          - com.driveai.exception.SoapBusinessException
+  retry:
+    instances:
+      groq:
+        maxAttempts: 2
+        waitDuration: 300ms
+      soap:
+        maxAttempts: 2
+        waitDuration: 300ms
+        retryExceptions:
+          - com.driveai.exception.SoapTechnicalException
+          - org.springframework.web.client.ResourceAccessException
+          - java.io.IOException
 
 # ============================================================================
 # Perfil: dev
@@ -80,9 +141,9 @@ spring:
     activate:
       on-profile: dev
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cardb}
-    username: ${SPRING_DATASOURCE_USERNAME:cardb_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:cardb_pass}
+    url: "${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cardb}"
+    username: "${SPRING_DATASOURCE_USERNAME:cardb_user}"
+    password: "${SPRING_DATASOURCE_PASSWORD:cardb_pass}"
 
 logging:
   level:
@@ -91,7 +152,7 @@ logging:
     org.springframework.transaction: INFO
 
 # ============================================================================
-# Perfil: prod
+# Perfil: prod — variables obligatorias con mensajes claros
 # ============================================================================
 ---
 spring:
@@ -99,12 +160,25 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: ${SPRING_DATASOURCE_URL}
-    username: ${SPRING_DATASOURCE_USERNAME}
-    password: ${SPRING_DATASOURCE_PASSWORD}
+    url: "${SPRING_DATASOURCE_URL:?Falta SPRING_DATASOURCE_URL en .env (ej: jdbc:postgresql://postgres:5432/cardb)}"
+    username: "${SPRING_DATASOURCE_USERNAME:?Falta SPRING_DATASOURCE_USERNAME en .env}"
+    password: "${SPRING_DATASOURCE_PASSWORD:?Falta SPRING_DATASOURCE_PASSWORD en .env}"
   jpa:
     hibernate:
       ddl-auto: validate
+
+app:
+  jwt:
+    secret: "${JWT_SECRET:?Falta JWT_SECRET en .env (>= 32 bytes en Base64)}"
+  admin:
+    email: "${ADMIN_EMAIL:?Falta ADMIN_EMAIL en .env (cuenta administrador de la demo)}"
+    password: "${ADMIN_PASSWORD:?Falta ADMIN_PASSWORD en .env (password del administrador)}"
+
+groq:
+  api:
+    # La clave es opcional para permitir levantar el resto del e-commerce sin IA.
+    # Si está vacía, el asesor responde 503 con un mensaje claro (degradación controlada).
+    api-key: "${GROQ_API_KEY:}"
 
 logging:
   level:

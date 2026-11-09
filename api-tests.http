@@ -1,110 +1,163 @@
 # ============================================================================
-# DriveAI — Colección de pruebas de API
+# DriveAI — Colección de pruebas de API (REST Client / IntelliJ HTTP Client)
 #
 # Uso en VS Code:  instala la extensión "REST Client" (humanitec).
 # Uso en IntelliJ: abre el archivo con "HTTP Request".
-#   - Asegúrate de que el backend corra en http://localhost:8080.
-#   - Para el endpoint IA (Groq) define GROQ_API_KEY en backend/.env o entorno.
+#   - Backend en http://localhost:8080.
+#   - Ejecuta las requests en orden: el login guarda el token en @customerToken.
+#   - El carrito y las órdenes se resuelven desde el JWT: NO se envía sessionId.
 # ============================================================================
 
 @host = http://localhost:8080
-@sessionId = demo-session-001
+@email = api-demo-{{$timestamp}}@driveai.test
+@password = ApiDemoPassw0rd!
+@customerToken = REEMPLAZAR_CON_TOKEN
+@adminToken = REEMPLAZAR_CON_TOKEN_ADMIN
+@carId = 1
+@cartItemId = 1
+@orderId = 1
 
 ### 1. Healthcheck del backend
 GET {{host}}/actuator/health
 
-### 2. Catálogo paginado
+### 2. Catálogo paginado (público)
 GET {{host}}/api/cars?page=0&size=12
 
 ### 3. Filtros combinados (rango de precio + híbrido + SUV)
 GET {{host}}/api/cars?minPrice=20000&maxPrice=40000&fuelType=HIBRIDO&bodyType=SUV&sort=price,asc
 
-### 4. Búsqueda por término (marca/modelo/descripción)
-GET {{host}}/api/cars?q=civic
+### 4. Detalle de vehículo (público) — 200 + ETag
+GET {{host}}/api/cars/{{carId}}
 
-### 5. Detalle de auto
-GET {{host}}/api/cars/8
+### 5. Detalle inexistente — 404 Problem Details
+GET {{host}}/api/cars/99999999
 
-### 6. Auto inexistente -> 404 RFC7807
-GET {{host}}/api/cars/9999
-
-### 7. Carrito: obtener sesión (inicialmente vacía)
-GET {{host}}/api/cart?sessionId={{sessionId}}
-
-### 8. Carrito: agregar Toyota Corolla (id 7)
-POST {{host}}/api/cart/add
+### 6. Registro de cliente — 201
+POST {{host}}/api/auth/register
 Content-Type: application/json
 
 {
-  "sessionId": "{{sessionId}}",
-  "carId": 7,
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "fullName": "Cliente API"
+}
+
+### 7. Login de cliente — 200 (copiar token a @customerToken)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### 8. Login con contraseña incorrecta — 401
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "PasswordIncorrecta!"
+}
+
+### 9. Carrito sin token — 401
+GET {{host}}/api/cart
+
+### 10. Agregar al carrito (dueño = JWT)
+POST {{host}}/api/cart/add
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "carId": {{carId}},
   "quantity": 1
 }
 
-### 9. Carrito: actualizar cantidad del ítem
-PUT {{host}}/api/cart/update/1?sessionId={{sessionId}}
+### 11. Ver mi carrito
+GET {{host}}/api/cart
+Authorization: Bearer {{customerToken}}
+
+### 12. Actualizar cantidad de un ítem propio
+PUT {{host}}/api/cart/update/{{cartItemId}}
+Authorization: Bearer {{customerToken}}
 Content-Type: application/json
 
 {
   "quantity": 2
 }
 
-### 10. Checkout transaccional (descuenta stock, orden CONFIRMED)
+### 13. Checkout idempotente (Idempotency-Key)
 POST {{host}}/api/orders/checkout
+Authorization: Bearer {{customerToken}}
 Content-Type: application/json
+Idempotency-Key: demo-idempotency-key-001
 
 {
-  "sessionId": "{{sessionId}}",
   "items": [
-    { "carId": 7, "quantity": 2 }
+    { "carId": {{carId}}, "quantity": 1 }
   ]
 }
 
-### 11. Checkout con stock insuficiente -> 409 RFC7807
+### 14. Repetir el mismo checkout con la misma Idempotency-Key — misma orden
 POST {{host}}/api/orders/checkout
+Authorization: Bearer {{customerToken}}
 Content-Type: application/json
+Idempotency-Key: demo-idempotency-key-001
 
 {
-  "sessionId": "{{sessionId}}",
   "items": [
-    { "carId": 7, "quantity": 9999 }
+    { "carId": {{carId}}, "quantity": 1 }
   ]
 }
 
-### 12. Checkout con carro inexistente -> 404 RFC7807
-POST {{host}}/api/orders/checkout
+### 15. Historial propio de órdenes
+GET {{host}}/api/orders
+Authorization: Bearer {{customerToken}}
+
+### 16. Detalle de una orden propia
+GET {{host}}/api/orders/{{orderId}}
+Authorization: Bearer {{customerToken}}
+
+### 17. Cancelar una orden propia — 200
+POST {{host}}/api/orders/{{orderId}}/cancel
+Authorization: Bearer {{customerToken}}
+
+### 18. Cancelar de nuevo — 409 transición inválida
+POST {{host}}/api/orders/{{orderId}}/cancel
+Authorization: Bearer {{customerToken}}
+
+### 19. Cliente intenta crear un auto — 403 (BFLA)
+POST {{host}}/api/cars
+Authorization: Bearer {{customerToken}}
 Content-Type: application/json
 
 {
-  "sessionId": "{{sessionId}}",
-  "items": [
-    { "carId": 987654, "quantity": 1 }
-  ]
+  "brand": "Hack",
+  "model": "Forbidden",
+  "year": 2024,
+  "price": 1,
+  "mileage": 0,
+  "fuelType": "GASOLINA",
+  "fuelConsumption": 1,
+  "transmission": "MANUAL",
+  "bodyType": "SEDAN",
+  "imageUrl": "https://img.test/x.jpg",
+  "description": "No permitido",
+  "stock": 1
 }
 
-### 13. Asesor IA: recomendación (requiere GROQ_API_KEY configurada)
+### 20. Cotización SOAP (fallback controlado si el proveedor falla)
+GET {{host}}/api/soap/quote/{{carId}}
+
+### 21. Asesor IA (requiere GROQ_API_KEY; sin clave devuelve 503 controlado)
 POST {{host}}/api/ai/recommend
+Authorization: Bearer {{customerToken}}
 Content-Type: application/json
 
 {
-  "prompt": "Recomiéndame una SUV híbrida familiar por menos de 40,000 dólares",
-  "sessionId": "{{sessionId}}"
+  "prompt": "Busco una SUV híbrida familiar por menos de 30000 dólares",
+  "sessionId": "api-demo-session"
 }
 
-### 14. Asesor IA: prompt en blanco -> 400 RFC7807
-POST {{host}}/api/ai/recommend
-Content-Type: application/json
-
-{
-  "prompt": "   ",
-  "sessionId": "{{sessionId}}"
-}
-
-### 15. Carrito: eliminar ítem
-DELETE {{host}}/api/cart/remove/1?sessionId={{sessionId}}
-
-### 16. Documentación Swagger UI (abrir en navegador)
-GET {{host}}/swagger-ui.html
-
-### 17. Especificación OpenAPI (JSON)
+### 22. Documento OpenAPI
 GET {{host}}/v3/api-docs

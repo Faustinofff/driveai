@@ -13,27 +13,37 @@ import java.util.Date;
 
 /**
  * Emite y valida tokens JWT (firma HMAC; con secreto ≥48 bytes jjwt emplea HS384).
- * El secreto proviene de {@code app.jwt.secret}; si no se configura, se genera
- * uno aleatorio (los tokens dejan de valer al reiniciar).
+ *
+ * <p>Validaciones aplicadas al parsear: firma, algoritmo HMAC (rechaza
+ * {@code alg=none}), expiración e issuer. El secreto proviene de
+ * {@code app.jwt.secret}; si no se configura en desarrollo se genera uno
+ * aleatorio (los tokens dejan de valer al reiniciar). En producción el
+ * arranque exige {@code JWT_SECRET} mediante {@code application.yml}.
  */
 @Component
 public class JwtService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String DEFAULT_ISSUER = "driveai";
 
     private final SecretKey key;
     private final long expirationMillis;
+    private final String issuer;
 
     public JwtService(AppProperties properties) {
         byte[] secretBytes = decodeSecret(properties.jwt().secret());
         this.key = Keys.hmacShaKeyFor(secretBytes);
         this.expirationMillis = properties.jwt().expirationMinutes() * 60_000L;
+        this.issuer = properties.jwt().issuer() == null || properties.jwt().issuer().isBlank()
+                ? DEFAULT_ISSUER
+                : properties.jwt().issuer().trim();
     }
 
     public String generateToken(Long userId, String email, String role) {
         Date issuedAt = new Date();
         Date expiresAt = new Date(issuedAt.getTime() + expirationMillis);
         return Jwts.builder()
+                .issuer(issuer)
                 .subject(email)
                 .claim("uid", userId)
                 .claim("role", role)
@@ -54,12 +64,21 @@ public class JwtService {
         }
     }
 
+    /**
+     * Parsea y valida el token. Lanza {@link RuntimeException} (jjwt) si la
+     * firma, el algoritmo, el issuer o la expiración no son válidos.
+     */
     public Claims parse(String token) {
         return Jwts.parser()
                 .verifyWith(key)
+                .requireIssuer(issuer)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public String issuer() {
+        return issuer;
     }
 
     private static byte[] decodeSecret(String secret) {

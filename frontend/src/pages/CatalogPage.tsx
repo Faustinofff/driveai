@@ -9,6 +9,7 @@ import type { CarFilters } from '../types'
 interface CatalogPageProps {
   q: string
   onRequireLogin: () => void
+  onClearSearch?: () => void
 }
 
 const SKELETON_COUNT = 8
@@ -46,7 +47,7 @@ function filtersToSearch(filters: CarFilters): string {
   return value ? `?${value}` : ''
 }
 
-export function CatalogPage({ q, onRequireLogin }: CatalogPageProps) {
+export function CatalogPage({ q, onRequireLogin, onClearSearch }: CatalogPageProps) {
   const [filters, setFilters] = useState<CarFilters>(() => readFiltersFromURL())
   const [page, setPage] = useState(0)
 
@@ -56,7 +57,13 @@ export function CatalogPage({ q, onRequireLogin }: CatalogPageProps) {
   }, [q])
 
   useEffect(() => {
-    window.history.replaceState(null, '', filtersToSearch(filters))
+    // Se preserva el hash (#/catalog) porque la SPA navega por hash: si se
+    // reemplazara solo con "?filtros" se perdería la vista al recargar.
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${filtersToSearch(filters)}${window.location.hash}`,
+    )
   }, [filters])
 
   const updateFilters = (next: CarFilters) => {
@@ -67,6 +74,9 @@ export function CatalogPage({ q, onRequireLogin }: CatalogPageProps) {
   const clearFilters = () => {
     setFilters({})
     setPage(0)
+    // La búsqueda del navbar es parte del filtrado: limpiar filtros también
+    // debe vaciar el texto para no dejar resultados ocultos por la query.
+    onClearSearch?.()
   }
 
   const query = useCars({ ...filters, q }, page)

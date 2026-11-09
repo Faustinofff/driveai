@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-11-09T01:42:50.489Z",
+  "baseUrl": "http://localhost:8080",
+  "scenario": {
+    "vus": 50,
+    "duration": "5m",
+    "endpoints": [
+      "/api/cars",
+      "/api/cars/{id}",
+      "/api/cart"
+    ]
+  },
+  "metrics": {
+    "http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 4.467932878544674,
+        "min": 0.5219,
+        "med": 3.0047,
+        "max": 339.4068,
+        "p(90)": 4.9977,
+        "p(95)": 7.1054
+      },
+      "thresholds": {
+        "p(95)<500": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 14952
+      },
+      "thresholds": {
+        "rate<0.01": {
+          "ok": true
+        }
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 49.6709542816031,
+        "count": 14950
+      }
+    },
+    "business_errors": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 14950
+      },
+      "thresholds": {
+        "rate<0.01": {
+          "ok": true
+        }
+      }
+    }
+  },
+  "thresholds": [
+    {
+      "name": "status es 200",
+      "path": "::status es 200",
+      "id": "c8f562f01bcdf8f7be8c15f6ad60295d",
+      "passes": 14950,
+      "fails": 0
+    },
+    {
+      "name": "respuesta JSON",
+      "path": "::respuesta JSON",
+      "id": "4029d94378c05c68a42173d7121d1a3e",
+      "passes": 14950,
+      "fails": 0
+    },
+    {
+      "passes": 14950,
+      "fails": 0,
+      "name": "latencia < 500 ms",
+      "path": "::latencia < 500 ms",
+      "id": "5a649f62304ba51df4139f447af79e1a"
+    }
+  ]
+}

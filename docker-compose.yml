@@ -1,13 +1,18 @@
 # ============================================================================
-# DriveAI — Orquestación de servicios con Docker Compose
-# Uso:       docker compose up -d --build
-# Detener:   docker compose down
-# Reset DB:  docker compose down -v
+# DriveAI — Orquestación completa de servicios
+#
+#   Levantar todo:   docker compose up -d --build
+#   Ver logs:        docker compose logs -f backend
+#   Detener:         docker compose down
+#   Reset completo:  docker compose down -v
+#
+# Servicios: PostgreSQL, RabbitMQ (broker + DLQ), mock SOAP (WireMock + WSDL),
+# backend Spring Boot y frontend React servido por Nginx.
 # ============================================================================
 
 services:
   # --------------------------------------------------------------------------
-  # PostgreSQL 16 — base de datos principal
+  # PostgreSQL 16 — base de datos principal (esquema gobernado por Flyway)
   # --------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
@@ -29,6 +34,48 @@ services:
       start_period: 5s
 
   # --------------------------------------------------------------------------
+  # RabbitMQ 3.13 — broker de mensajería (outbox, consumidor idempotente, DLQ)
+  # Panel de administración: http://localhost:15672 (guest/guest por defecto)
+  # --------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: driveai-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # --------------------------------------------------------------------------
+  # Mock SOAP — WireMock con WSDL publicado y Faults controlables.
+  #   POST /soap/vehicles          → cotización válida
+  #   vehicleId = 999              → Fault de negocio (HTTP 500, faultcode Client)
+  #   vehicleId = 998              → Fault técnico (HTTP 500, faultcode Server)
+  #   GET  /soap/vehicles?wsdl     → WSDL
+  # Panel: http://localhost:8089/__admin
+  # --------------------------------------------------------------------------
+  soap-mock:
+    image: wiremock/wiremock:3.9.1
+    container_name: driveai-soap-mock
+    restart: unless-stopped
+    command: ["--port", "8080", "--verbose"]
+    ports:
+      - "${SOAP_MOCK_PORT:-8089}:8080"
+    volumes:
+      - ./docker/soap-mock/mappings:/home/wiremock/mappings:ro
+      - ./docker/soap-mock/__files:/home/wiremock/__files:ro
+
+  # --------------------------------------------------------------------------
   # Backend — Spring Boot 3 (Java 17)
   # --------------------------------------------------------------------------
   backend:
@@ -40,14 +87,33 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      soap-mock:
+        condition: service_started
     environment:
-      SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-cardb}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-cardb_user}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-cardb_pass}
+      JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en .env (>= 32 bytes en Base64)}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-1440}
+      JWT_ISSUER: ${JWT_ISSUER:-driveai}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Falta ADMIN_EMAIL en .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Falta ADMIN_PASSWORD en .env}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-groq/compound-mini}
+      GROQ_API_BASE_URL: ${GROQ_API_BASE_URL:-https://api.groq.com/openai/v1}
       RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-5}
+      LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-5}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:4173}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      SOAP_BASE_URL: http://soap-mock:8080
+      SOAP_PATH: /soap/vehicles
+      OUTBOX_ENABLED: "true"
     ports:
       - "${SERVER_PORT:-8080}:8080"
     healthcheck:
@@ -55,7 +121,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
-      start_period: 30s
+      start_period: 45s
 
   # --------------------------------------------------------------------------
   # Frontend — React + Vite (empaquetado y servido por Nginx)
@@ -73,4 +139,6 @@ services:
 
 volumes:
   postgres-data:
+    driver: local
+  rabbitmq-data:
     driver: local

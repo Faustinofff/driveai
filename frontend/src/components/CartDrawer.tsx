@@ -4,7 +4,6 @@ import { checkout } from '../services/api'
 import type { ApiError } from '../services/api'
 import {
   selectLines,
-  selectSessionId,
   selectSubtotal,
   useCartStore,
 } from '../store/cartStore'
@@ -19,7 +18,6 @@ interface CartDrawerProps {
 
 export function CartDrawer({ open, onClose, onOrderCreated }: CartDrawerProps) {
   const lines = useCartStore(selectLines)
-  const sessionId = useCartStore(selectSessionId)
   const subtotal = useCartStore(selectSubtotal)
   const increment = useCartStore((state) => state.increment)
   const decrement = useCartStore((state) => state.decrement)
@@ -36,7 +34,6 @@ export function CartDrawer({ open, onClose, onOrderCreated }: CartDrawerProps) {
     setError(null)
     try {
       const order = await checkout({
-        sessionId,
         items: lines.map((line) => ({ carId: line.car.id, quantity: line.quantity })),
       })
       clear()

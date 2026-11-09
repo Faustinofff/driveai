@@ -11,6 +11,8 @@ node_modules/
 dist/
 dist-ssr/
 coverage/
+frontend/playwright-report/
+frontend/test-results/
 *.local
 .vite/
 npm-debug.log*

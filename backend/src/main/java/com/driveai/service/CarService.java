@@ -3,6 +3,7 @@ package com.driveai.service;
 import com.driveai.domain.model.Car;
 import com.driveai.dto.car.CarWriteRequest;
 import com.driveai.exception.ConflictException;
+import com.driveai.exception.PreconditionFailedException;
 import com.driveai.exception.ResourceNotFoundException;
 import com.driveai.repository.CarRepository;
 import com.driveai.specification.CarFilters;
@@ -59,7 +60,24 @@ public class CarService {
 
     @Transactional
     public Car update(Long id, CarWriteRequest request) {
+        return update(id, request, null);
+    }
+
+    /**
+     * Actualiza un auto aplicando concurrencia optimista si el cliente envía
+     * {@code If-Match}. Un ETag desactualizado produce HTTP 412.
+     */
+    @Transactional
+    public Car update(Long id, CarWriteRequest request, String ifMatch) {
         Car car = getById(id);
+        if (ifMatch != null && !ifMatch.isBlank()) {
+            String expected = normalizeEtag(ifMatch);
+            String current = String.valueOf(car.getVersion() == null ? 0L : car.getVersion());
+            if (!current.equals(expected)) {
+                throw new PreconditionFailedException(
+                        "El recurso fue modificado por otra operación. Recarga el auto e inténtalo de nuevo.");
+            }
+        }
         car.setBrand(request.brand().trim());
         car.setModel(request.model().trim());
         car.setYear(request.year());
@@ -73,6 +91,17 @@ public class CarService {
         car.setDescription(request.description().trim());
         car.setStock(request.stock());
         return carRepository.save(car);
+    }
+
+    private String normalizeEtag(String ifMatch) {
+        String value = ifMatch.trim();
+        if (value.startsWith("W/")) {
+            value = value.substring(2).trim();
+        }
+        if (value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2) {
+            value = value.substring(1, value.length() - 1);
+        }
+        return value;
     }
 
     @Transactional

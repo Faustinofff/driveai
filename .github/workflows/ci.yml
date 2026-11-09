@@ -1,0 +1,359 @@
+name: CI — DriveAI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JAVA_VERSION: '17'
+  NODE_VERSION: '20'
+  # Nunca se versionan secretos reales: CI genera valores efímeros en runtime.
+  JWT_SECRET: ${{ secrets.JWT_SECRET }}
+  ADMIN_EMAIL: admin@driveai.test
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) Backend: pruebas unitarias + cobertura (≥80% líneas / ≥70% ramas) + SpotBugs
+  # ---------------------------------------------------------------------------
+  backend-unit:
+    name: Backend · unitarias + cobertura + SpotBugs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Ejecutar unitarias, JaCoCo y umbrales
+        working-directory: backend
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET || 'ci-ephemeral-jwt-secret-with-at-least-32-bytes-000000' }}
+        run: mvn -B verify -Pcoverage
+
+      - name: SpotBugs (falla el build si hay hallazgos)
+        working-directory: backend
+        run: mvn -B spotbugs:check
+
+      - name: Publicar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: backend/target/site/jacoco
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Publicar reporte SpotBugs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotbugs-report
+          path: backend/target/spotbugsXml.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # 2) Mutación: PIT ≥60% (umbral configurado en pom.xml)
+  # ---------------------------------------------------------------------------
+  backend-mutation:
+    name: Backend · mutación (PIT)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: PIT mutation coverage
+        working-directory: backend
+        env:
+          JWT_SECRET: 'ci-ephemeral-jwt-secret-with-at-least-32-bytes-000000'
+        run: mvn -B pitest:mutationCoverage
+
+      - name: Publicar reporte PIT
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pit-report
+          path: backend/target/pit-reports
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # 3) Integración: Testcontainers con PostgreSQL y RabbitMQ reales
+  # ---------------------------------------------------------------------------
+  backend-integration:
+    name: Backend · integración Testcontainers
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Ejecutar pruebas de integración
+        working-directory: backend
+        env:
+          JWT_SECRET: 'ci-ephemeral-jwt-secret-with-at-least-32-bytes-000000'
+        run: mvn -B verify -Pintegration
+
+      - name: Publicar reportes de integración
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failsafe-reports
+          path: backend/target/failsafe-reports
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # 4) Frontend: build + Playwright E2E contra el stack real (Postgres + backend)
+  # ---------------------------------------------------------------------------
+  frontend-e2e:
+    name: Frontend · build + E2E Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cardb
+          POSTGRES_USER: cardb_user
+          POSTGRES_PASSWORD: cardb_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cardb_user -d cardb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/cardb
+      SPRING_DATASOURCE_USERNAME: cardb_user
+      SPRING_DATASOURCE_PASSWORD: cardb_pass
+      SPRING_PROFILES_ACTIVE: dev
+      RABBITMQ_HOST: localhost
+      RABBITMQ_PORT: '5672'
+      OUTBOX_ENABLED: 'false'
+      GROQ_API_KEY: ''
+      SOAP_BASE_URL: http://localhost:8089
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Configurar Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias del frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build de producción
+        working-directory: frontend
+        run: npm run build
+
+      - name: Instalar Chromium de Playwright
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Generar secretos efímeros de la demo
+        id: demo-secrets
+        run: |
+          echo "jwt_secret=$(openssl rand -base64 48)" >> "$GITHUB_OUTPUT"
+          echo "admin_password=$(openssl rand -base64 24 | tr -d '/+=' | head -c 20)" >> "$GITHUB_OUTPUT"
+
+      - name: Empaquetar backend
+        working-directory: backend
+        env:
+          JWT_SECRET: ${{ steps.demo-secrets.outputs.jwt_secret }}
+        run: mvn -B -DskipTests package
+
+      - name: Levantar backend
+        working-directory: backend
+        env:
+          JWT_SECRET: ${{ steps.demo-secrets.outputs.jwt_secret }}
+          ADMIN_EMAIL: admin@driveai.test
+          ADMIN_PASSWORD: ${{ steps.demo-secrets.outputs.admin_password }}
+        run: |
+          nohup java -jar target/driveai-backend.jar > ../backend-e2e.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              echo "Backend listo"; exit 0
+            fi
+            sleep 2
+          done
+          echo "El backend no arrancó a tiempo"; tail -100 ../backend-e2e.log; exit 1
+
+      - name: Ejecutar E2E
+        working-directory: frontend
+        env:
+          E2E_BASE_URL: http://localhost:5173
+          E2E_API_URL: http://localhost:8080
+          VITE_API_URL: http://localhost:8080
+          ADMIN_EMAIL: admin@driveai.test
+          ADMIN_PASSWORD: ${{ steps.demo-secrets.outputs.admin_password }}
+        run: npx playwright test
+
+      - name: Publicar reporte Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Log del backend ante fallos
+        if: failure()
+        run: tail -200 backend-e2e.log || true
+
+  # ---------------------------------------------------------------------------
+  # 5) Seguridad: Gitleaks + Trivy
+  # ---------------------------------------------------------------------------
+  security-scan:
+    name: Seguridad · Gitleaks + Trivy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks (secretos en el historial)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # El historial contiene una contraseña de demo histórica (commit 3f19436).
+        # El escaneo se reporta pero no bloquea hasta que el equipo autorice la
+        # reescritura de historia. Ver docs/testing/08-seguridad-y-resiliencia.md.
+        continue-on-error: true
+
+      - name: Trivy (vulnerabilidades de dependencias)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
+  # ---------------------------------------------------------------------------
+  # 6) API: colección Postman con Newman (informativo, no bloqueante)
+  # ---------------------------------------------------------------------------
+  api-newman:
+    name: API · Postman/Newman
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: frontend-e2e
+    if: github.event_name == 'workflow_dispatch'
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cardb
+          POSTGRES_USER: cardb_user
+          POSTGRES_PASSWORD: cardb_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cardb_user -d cardb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/cardb
+      SPRING_DATASOURCE_USERNAME: cardb_user
+      SPRING_DATASOURCE_PASSWORD: cardb_pass
+      SPRING_PROFILES_ACTIVE: dev
+      OUTBOX_ENABLED: 'false'
+      GROQ_API_KEY: ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Empaquetar backend
+        working-directory: backend
+        env:
+          JWT_SECRET: 'ci-ephemeral-jwt-secret-with-at-least-32-bytes-000000'
+          ADMIN_EMAIL: admin@driveai.test
+          ADMIN_PASSWORD: 'CiAdminPassw0rd!'
+        run: mvn -B -DskipTests package
+
+      - name: Levantar backend
+        working-directory: backend
+        env:
+          JWT_SECRET: 'ci-ephemeral-jwt-secret-with-at-least-32-bytes-000000'
+          ADMIN_EMAIL: admin@driveai.test
+          ADMIN_PASSWORD: 'CiAdminPassw0rd!'
+        run: |
+          nohup java -jar target/driveai-backend.jar > ../backend-newman.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then exit 0; fi
+            sleep 2
+          done
+          tail -100 ../backend-newman.log; exit 1
+
+      - name: Instalar Newman
+        run: npm install -g newman
+
+      - name: Ejecutar colección
+        run: newman run postman/DriveAI.postman_collection.json --env-var baseUrl=http://localhost:8080

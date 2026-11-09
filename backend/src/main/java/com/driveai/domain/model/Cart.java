@@ -32,7 +32,15 @@ public class Cart {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "session_id", nullable = false, length = 64, unique = true)
+    /**
+     * Dueño del carrito. Se toma siempre del JWT; nunca de un valor enviado
+     * por el cliente (corrige BOLA/IDOR).
+     */
+    @Column(name = "user_id", unique = true)
+    private Long userId;
+
+    /** Campo histórico de desarrollo; los carritos nuevos ya no lo usan. */
+    @Column(name = "session_id", length = 64, unique = true)
     private String sessionId;
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)

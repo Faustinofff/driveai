@@ -18,6 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * Carrito propiedad del usuario autenticado.
+ *
+ * <p>Todas las operaciones reciben el {@code userId} resuelto desde el JWT.
+ * Un usuario no puede leer ni modificar el carrito de otro aunque conozca el
+ * id de un ítem: el repositorio filtra siempre por {@code cart.userId}.
+ */
 @Service
 @RequiredArgsConstructor
 public class CartService {
@@ -27,21 +34,21 @@ public class CartService {
     private final CarRepository carRepository;
 
     @Transactional(readOnly = true)
-    public CartResponse getCart(String sessionId) {
-        return cartRepository.findBySessionId(sessionId)
+    public CartResponse getCart(Long userId) {
+        return cartRepository.findByUserId(userId)
                 .map(this::toResponse)
-                .orElseGet(() -> new CartResponse(sessionId, List.of(), BigDecimal.ZERO));
+                .orElseGet(() -> new CartResponse(userId, List.of(), BigDecimal.ZERO));
     }
 
     @Transactional
-    public CartResponse addToCart(CartAddRequest request) {
+    public CartResponse addToCart(CartAddRequest request, Long userId) {
         Car car = carRepository.findById(request.carId())
                 .orElseThrow(() -> new ResourceNotFoundException("Auto", request.carId()));
 
-        Cart cart = cartRepository.findBySessionId(request.sessionId())
+        Cart cart = cartRepository.findByUserId(userId)
                 .orElseGet(() -> {
                     Cart created = new Cart();
-                    created.setSessionId(request.sessionId());
+                    created.setUserId(userId);
                     return created;
                 });
 
@@ -68,23 +75,23 @@ public class CartService {
     }
 
     @Transactional
-    public CartResponse updateItem(Long itemId, String sessionId, Integer quantity) {
-        CartItem item = cartItemRepository.findByIdAndCart_SessionId(itemId, sessionId)
+    public CartResponse updateItem(Long itemId, Long userId, Integer quantity) {
+        CartItem item = cartItemRepository.findByIdAndCart_UserId(itemId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ítem de carrito", itemId));
 
         validateStock(item.getCar(), quantity);
         item.setQuantity(quantity);
         cartItemRepository.save(item);
 
-        Cart cart = cartRepository.findBySessionId(sessionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Carrito", sessionId));
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Carrito", userId));
         return toResponse(cart);
     }
 
     @Transactional
-    public CartResponse removeItem(Long itemId, String sessionId) {
-        Cart cart = cartRepository.findBySessionId(sessionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Carrito", sessionId));
+    public CartResponse removeItem(Long itemId, Long userId) {
+        Cart cart = cartRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Carrito", userId));
 
         boolean removed = cart.getItems().removeIf(item -> item.getId().equals(itemId));
         if (!removed) {
@@ -95,8 +102,8 @@ public class CartService {
     }
 
     @Transactional
-    public void clearCart(String sessionId) {
-        cartRepository.findBySessionId(sessionId).ifPresent(cartRepository::delete);
+    public void clearCart(Long userId) {
+        cartRepository.findByUserId(userId).ifPresent(cartRepository::delete);
     }
 
     private void validateStock(Car car, int quantity) {
@@ -112,6 +119,6 @@ public class CartService {
         BigDecimal subtotal = items.stream()
                 .map(CartItemResponse::lineTotal)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new CartResponse(cart.getSessionId(), items, subtotal);
+        return new CartResponse(cart.getUserId(), items, subtotal);
     }
 }

@@ -1,0 +1,303 @@
+{
+  "info": {
+    "name": "DriveAI — API Tests",
+    "description": "Colección Postman/Newman de DriveAI. Cubre camino feliz y errores de los endpoints críticos. Ejecutar con: newman run postman/DriveAI.postman_collection.json --env-var baseUrl=http://localhost:8080",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "email", "value": "ci-placeholder@driveai.test" },
+    { "key": "password", "value": "PostmanPassw0rd!" },
+    { "key": "customerToken", "value": "" },
+    { "key": "cartItemId", "value": "1" },
+    { "key": "orderId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "01 · Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/actuator/health", "host": ["{{baseUrl}}"], "path": ["actuator", "health"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('200 y status UP', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('UP'); });"] }
+        }
+      ]
+    },
+    {
+      "name": "02 · Registro de cliente",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"fullName\": \"Cliente Postman\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": { "exec": ["pm.collectionVariables.set('email', 'ci-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '@driveai.test');"] }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('201 y token', () => { pm.response.to.have.status(201); const b = pm.response.json(); pm.expect(b.token).to.be.a('string').and.not.empty; pm.collectionVariables.set('customerToken', b.token); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 · Login de cliente",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('200 y token', () => { pm.response.to.have.status(200); pm.collectionVariables.set('customerToken', pm.response.json().token); });"] }
+        }
+      ]
+    },
+    {
+      "name": "04 · Login inválido (negativo)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"PasswordIncorrecta!\"\n}" },
+        "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('401 Problem Details', () => { pm.response.to.have.status(401); pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); });"] }
+        }
+      ]
+    },
+    {
+      "name": "05 · Catálogo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/cars?page=0&size=5", "host": ["{{baseUrl}}"], "path": ["api", "cars"], "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "5" }] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('200 con contenido', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().content.length).to.be.above(0); });"] }
+        }
+      ]
+    },
+    {
+      "name": "06 · Detalle de vehículo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/cars/1", "host": ["{{baseUrl}}"], "path": ["api", "cars", "1"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('200 y ETag', () => { pm.response.to.have.status(200); pm.expect(pm.response.headers.get('ETag')).to.exist; });"] }
+        }
+      ]
+    },
+    {
+      "name": "07 · Detalle inexistente (negativo)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/cars/99999999", "host": ["{{baseUrl}}"], "path": ["api", "cars", "99999999"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('404 Problem Details', () => { pm.response.to.have.status(404); pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); });"] }
+        }
+      ]
+    },
+    {
+      "name": "08 · Carrito sin token (negativo)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/cart", "host": ["{{baseUrl}}"], "path": ["api", "cart"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('401 Problem Details', () => { pm.response.to.have.status(401); pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); });"] }
+        }
+      ]
+    },
+    {
+      "name": "09 · Agregar al carrito",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"carId\": 1,\n  \"quantity\": 1\n}" },
+        "url": { "raw": "{{baseUrl}}/api/cart/add", "host": ["{{baseUrl}}"], "path": ["api", "cart", "add"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 con ítem', () => { pm.response.to.have.status(200); const b = pm.response.json(); pm.expect(b.items.length).to.be.above(0); pm.collectionVariables.set('cartItemId', b.items[0].id); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 · Ver mi carrito",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/cart", "host": ["{{baseUrl}}"], "path": ["api", "cart"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('200 carrito del usuario', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().items.length).to.be.above(0); });"] }
+        }
+      ]
+    },
+    {
+      "name": "11 · Checkout idempotente",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{customerToken}}" },
+          { "key": "Idempotency-Key", "value": "postman-idem-001" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"items\": [ { \"carId\": 1, \"quantity\": 1 } ]\n}" },
+        "url": { "raw": "{{baseUrl}}/api/orders/checkout", "host": ["{{baseUrl}}"], "path": ["api", "orders", "checkout"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 orden CONFIRMED', () => { pm.response.to.have.status(200); const b = pm.response.json(); pm.expect(b.status).to.eql('CONFIRMED'); pm.collectionVariables.set('orderId', b.id); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 · Repetir checkout con misma Idempotency-Key",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{customerToken}}" },
+          { "key": "Idempotency-Key", "value": "postman-idem-001" }
+        ],
+        "body": { "mode": "raw", "raw": "{\n  \"items\": [ { \"carId\": 1, \"quantity\": 1 } ]\n}" },
+        "url": { "raw": "{{baseUrl}}/api/orders/checkout", "host": ["{{baseUrl}}"], "path": ["api", "orders", "checkout"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('misma orden', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('orderId'))); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 · Detalle de orden propia",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('200 orden propia', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('orderId'))); });"] }
+        }
+      ]
+    },
+    {
+      "name": "14 · Cancelar orden",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "cancel"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('200 CANCELLED', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('CANCELLED'); });"] }
+        }
+      ]
+    },
+    {
+      "name": "15 · Cancelar de nuevo (transición inválida)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{customerToken}}" }],
+        "url": { "raw": "{{baseUrl}}/api/orders/{{orderId}}/cancel", "host": ["{{baseUrl}}"], "path": ["api", "orders", "{{orderId}}", "cancel"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('409 Problem Details', () => { pm.response.to.have.status(409); pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); });"] }
+        }
+      ]
+    },
+    {
+      "name": "16 · CUSTOMER intenta crear auto (BFLA)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{customerToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brand\": \"Hack\",\n  \"model\": \"Forbidden\",\n  \"year\": 2024,\n  \"price\": 1,\n  \"mileage\": 0,\n  \"fuelType\": \"GASOLINA\",\n  \"fuelConsumption\": 1,\n  \"transmission\": \"MANUAL\",\n  \"bodyType\": \"SEDAN\",\n  \"imageUrl\": \"https://img.test/x.jpg\",\n  \"description\": \"No permitido\",\n  \"stock\": 1\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/api/cars", "host": ["{{baseUrl}}"], "path": ["api", "cars"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": { "exec": ["pm.test('403 Problem Details', () => { pm.response.to.have.status(403); pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); });"] }
+        }
+      ]
+    },
+    {
+      "name": "17 · OpenAPI publicado",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/v3/api-docs", "host": ["{{baseUrl}}"], "path": ["v3", "api-docs"] }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('200 con paths críticos', () => { pm.response.to.have.status(200); const p = pm.response.json().paths; pm.expect(p).to.have.property('/api/cars'); pm.expect(p).to.have.property('/api/orders/checkout'); pm.expect(p).to.have.property('/api/soap/quote/{carId}'); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

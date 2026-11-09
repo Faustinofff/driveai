@@ -14,6 +14,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -80,6 +81,11 @@ public class Car {
 
     @Column(nullable = false)
     private Integer stock;
+
+    /** Concurrencia optimista; se expone como ETag en la API. */
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

@@ -1,0 +1,14 @@
+{
+  "priority": 10,
+  "request": {
+    "method": "POST",
+    "urlPath": "/soap/vehicles"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "text/xml; charset=utf-8"
+    },
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:veh=\"http://driveai.com/soap/vehicles\"><soapenv:Body><veh:GetVehicleQuoteResponse><veh:available>true</veh:available><veh:quote>25000.50</veh:quote><veh:currency>USD</veh:currency><veh:message>Cotizacion vigente por 24 horas</veh:message></veh:GetVehicleQuoteResponse></soapenv:Body></soapenv:Envelope>"
+  }
+}

@@ -76,7 +76,11 @@ export default function App() {
   }
 
   const openCatalogWithCategory = (bodyType: BodyType) => {
-    window.history.pushState(null, '', `?bodyType=${bodyType}`)
+    window.history.pushState(
+      null,
+      '',
+      `${window.location.pathname}?bodyType=${bodyType}#/catalog`,
+    )
     setView('catalog')
     setSearchValue('')
   }
@@ -105,6 +109,7 @@ export default function App() {
             <CatalogPage
               q={debouncedSearch}
               onRequireLogin={() => openLogin('catalog', 'Inicia sesión para comprar en DriveAI.')}
+              onClearSearch={() => setSearchValue('')}
             />
           )}
           {view === 'ai' && <AiConciergePage />}

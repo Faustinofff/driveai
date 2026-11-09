@@ -41,7 +41,15 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "session_id", nullable = false, length = 64)
+    /**
+     * Dueño de la orden. Se toma siempre del JWT; nunca de un valor enviado
+     * por el cliente (corrige BOLA/IDOR).
+     */
+    @Column(name = "user_id")
+    private Long userId;
+
+    /** Campo histórico de desarrollo; las órdenes nuevas ya no lo usan. */
+    @Column(name = "session_id", length = 64)
     private String sessionId;
 
     @Enumerated(EnumType.STRING)

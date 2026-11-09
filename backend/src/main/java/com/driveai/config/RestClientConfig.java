@@ -16,6 +16,7 @@ public class RestClientConfig {
     @Bean
     public ClientHttpRequestFactory groqRequestFactory(GroqApiProperties properties) {
         HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofSeconds(properties.connectTimeoutSeconds()))
                 .build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);

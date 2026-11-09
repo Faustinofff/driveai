@@ -17,6 +17,7 @@ export interface Car {
   imageUrl: string
   description: string
   stock: number
+  version?: number
 }
 
 export interface PageResponse<T> {
@@ -37,13 +38,12 @@ export interface CartItem {
 }
 
 export interface Cart {
-  sessionId: string
+  userId: number
   items: CartItem[]
   subtotal: number
 }
 
 export interface CartAddRequest {
-  sessionId: string
   carId: number
   quantity: number
 }
@@ -58,7 +58,6 @@ export interface CheckoutItem {
 }
 
 export interface CheckoutRequest {
-  sessionId: string
   items: CheckoutItem[]
 }
 
@@ -72,7 +71,7 @@ export interface OrderItem {
 
 export interface Order {
   id: number
-  sessionId: string
+  userId: number
   status: OrderStatus
   totalAmount: number
   items: OrderItem[]
