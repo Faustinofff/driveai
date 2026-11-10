@@ -13,8 +13,8 @@ y `frontend/e2e/`):
 ejecutaron el 10/11 en la rama `qa/criterios-clase15` sin fallas; E2E del 8/11 (`06`).
 La spec de accesibilidad (7 casos) y toda la suite corrieron en verde en CI sobre `main`
 (run <https://github.com/Faustinofff/driveai/actions/runs/42867141379>: unitarias
-178/178, IT 18/18, Newman 55/55, Schemathesis 352/352, Playwright 23/23). El link al run
-del **tag** se agrega cuando se cree el tag (después de sanear D-01, ver `14`).
+178/178, IT 18/18, Newman 55/55, Schemathesis 352/352, Playwright 23/23). Run sobre el
+**tag** `v1.0-testing`, 9/9 jobs en verde: <https://github.com/Faustinofff/driveai/actions/runs/42897419739>.
 
 **Evidencia:** artefactos de CI — `jacoco-report`, `pit-report`, `failsafe-reports`,
 `playwright-report`, `api-contract-reports`, `zap-report`.

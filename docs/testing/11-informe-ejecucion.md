@@ -13,9 +13,10 @@ informan números de corridas reales; lo que todavía no corrió figura como
   artefactos de ese run (`jacoco-report`, `pit-report`, `failsafe-reports`,
   `playwright-report`, `api-contract-reports`, `zap-report`, `spotbugs-report`) quedan
   disponibles 7 días; descargarlos y adjuntarlos a la entrega.
-- El **run sobre el tag `v1.0-testing`** (link: _pendiente — el tag se crea recién
-  después de sanear D-01, ver `14`_) es la evidencia que se muestra en la defensa; al
-  crearlo, reemplazar el link de arriba y repetir esta tabla si algún número cambia.
+- **Run sobre el tag `v1.0-testing`** (commit `7125e45`, historial ya saneado): 9/9
+  jobs en verde, <https://github.com/Faustinofff/driveai/actions/runs/42897419739>. Es
+  la evidencia de G3 que se muestra en la defensa. Bajar sus artefactos antes de que
+  venzan (7 días).
 
 ## 1. Totales por nivel
 
@@ -71,7 +72,7 @@ completo incluyendo checkout, que es uno de los 3 endpoints críticos.
 | Medición | Valor | Umbral |
 | --- | --- | --- |
 | Pipeline completo (run de `main` 42867141379; 9 jobs en paralelo, el más largo es PIT) | **3 min 01 s** (17:39:15 → 17:42:16 UTC) | ≤ 15 min |
-| Pipeline completo sobre el tag `v1.0-testing` | _completar con el run del tag_ | ≤ 15 min |
+| Pipeline completo sobre el tag `v1.0-testing` (run 42897419739) | **2 min 59 s** (20:39:23 → 20:42:22 UTC) | ≤ 15 min |
 | Build de imágenes + arranque (`docker compose up -d --build`, con caché parcial) | ~2 min | ≤ 15 min |
 | `docker compose up` desde cero (G1) | _medir en máquina limpia_ | ≤ 15 min |
 

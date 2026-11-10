@@ -18,8 +18,9 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 >
 > **Verificación en CI:** los estados "verificado en CI" refieren al run verde sobre
 > `main` (`b4554eb`, merge del PR #1):
-> <https://github.com/Faustinofff/driveai/actions/runs/42867141379>. El run sobre el tag
-> `v1.0-testing` se crea después de sanear D-01 (`14`).
+> <https://github.com/Faustinofff/driveai/actions/runs/42867141379>. Run sobre el tag
+> `v1.0-testing` (historial saneado, 9/9 jobs en verde):
+> <https://github.com/Faustinofff/driveai/actions/runs/42897419739>.
 
 ## Resumen
 
