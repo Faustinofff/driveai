@@ -6,6 +6,7 @@ import com.driveai.exception.InsufficientStockException;
 import com.driveai.exception.PreconditionFailedException;
 import com.driveai.exception.RateLimitExceededException;
 import com.driveai.exception.ResourceNotFoundException;
+import com.driveai.exception.InvalidRequestException;
 import com.driveai.exception.SoapBusinessException;
 import com.driveai.exception.SoapTechnicalException;
 import jakarta.validation.ConstraintViolationException;
@@ -118,6 +119,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleBadRequest(Exception ex) {
         return problem(HttpStatus.BAD_REQUEST, "Solicitud inválida",
                 "Formato o tipo de dato incorrecto en la solicitud.", null);
+    }
+
+    /** DEF-13: datos inválidos validados a mano (p. ej. Idempotency-Key demasiado larga). */
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidRequest(InvalidRequestException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Solicitud inválida", ex.getMessage(), null);
     }
 
     /** DEF-10: {@code ?sort=campoInexistente} terminaba en 500; es un error del cliente. */

@@ -391,9 +391,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Log del backend ante fallos
+      - name: Log del backend ante fallos (solo excepciones)
         if: failure()
-        run: tail -200 backend-ci.log || true
+        run: |
+          grep -n -E "ERROR|Exception|Caused by|at com\.driveai" backend-ci.log | tail -120 || true
 
   # ---------------------------------------------------------------------------
   # 7) DAST: OWASP ZAP API scan autenticado (0 High; Medium se justifican)
@@ -489,9 +490,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Log del backend ante fallos
+      - name: Log del backend ante fallos (solo excepciones)
         if: failure()
-        run: tail -200 backend-ci.log || true
+        run: |
+          grep -n -E "ERROR|Exception|Caused by|at com\.driveai" backend-ci.log | tail -120 || true
 
   # ---------------------------------------------------------------------------
   # 8) Estabilidad: la suite unitaria 3 veces seguidas debe dar idéntico resultado

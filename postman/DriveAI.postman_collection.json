@@ -72,6 +72,10 @@
     {
       "key": "tmpCarId",
       "value": ""
+    },
+    {
+      "key": "longKey",
+      "value": ""
     }
   ],
   "item": [
@@ -2089,6 +2093,59 @@
           "script": {
             "exec": [
               "pm.test('401 Problem Details (sin JWT)', () => { pm.response.to.have.status(401); pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "55 · Checkout con Idempotency-Key > 255 caracteres (negativo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{longKey}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [ { \"carId\": 1, \"quantity\": 1 } ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/checkout",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders",
+            "checkout"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('longKey', 'k'.repeat(300));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('400 Problem Details (DEF-13)', () => { pm.response.to.have.status(400); pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json'); });"
             ]
           }
         }
