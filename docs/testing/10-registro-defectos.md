@@ -151,8 +151,9 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Obtenido | 500 "Error interno" |
 | Causa raíz (checkout) | Reproducido en local: `IdempotencyService` rechazaba una `Idempotency-Key` de más de 255 caracteres con `IllegalArgumentException` genérica → handler de `Exception` → 500. Schemathesis oculta (`[Filtered]`) ese header, por eso el curl de reproducción no lo mostraba |
 | Corrección (checkout) | `InvalidRequestException` → 400 Problem Details. Tests: `IdempotencyServiceTest#oversizedKeyIsRejected`, `ApiSecurityTest#oversizedIdempotencyKeyReturns400`, Newman PM 55 |
-| Causa raíz (PUT /api/cars) | No se reproduce en local con el curl reportado (da 400). El job de CI ahora imprime las excepciones del backend al fallar, para capturar la causa en el próximo run |
-| Estado | Checkout: corregido en rama · PUT: **abierto, en análisis** |
+| Causa raíz (ambos endpoints) | Log del backend en CI (run #12): `RequestRejectedException` del `StrictHttpFirewall` de Spring Security al leer `If-Match` / `Idempotency-Key` con caracteres de control o bytes no imprimibles (p. ej. `û¸ÿ`). El firewall hace bien en rechazarlos, pero la excepción se dispara dentro del controller y llegaba al handler genérico → 500. No se reproducía en local porque `curl` no envía esos bytes con facilidad |
+| Corrección | `GlobalExceptionHandler`: `RequestRejectedException` → 400 Problem Details sin repetir el valor rechazado. Test: `GlobalExceptionHandlerTest` (3); verificación de punta a punta: Schemathesis en CI |
+| Estado | Corregido en rama — pendiente re-run de CI |
 
 ### DEF-14 · Dependencias con CVE altas (Trivy)
 
