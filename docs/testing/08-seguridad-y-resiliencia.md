@@ -79,8 +79,8 @@ Actuator expone solo `health` e `info`.
 | Herramienta | Estado | Observación |
 | --- | --- | --- |
 | **SpotBugs 4.8.6.6** | ✅ 0 hallazgos | `mvn -B spotbugs:check` con `failOnError=true`; ver §8 |
-| **Trivy** (dependencias) | ⛔ NO EJECUTADO local | Definido en CI (`severity CRITICAL,HIGH`, bloqueante) |
-| **OWASP ZAP baseline** | ⛔ NO EJECUTADO local | Requiere stack levantado; se documenta checklist manual |
+| **Trivy** (dependencias) | CI run #5 (10/11): 7 HIGH → corregidas 6, mitigada 1 (DEF-14) | `severity CRITICAL,HIGH`, bloqueante. Excepción documentada: CVE-2026-22733 en `.trivyignore` (Cloud Foundry no usado y deshabilitado) |
+| **OWASP ZAP API scan** (pasivo + activo, autenticado) | ⏳ CI, job `dast-zap` | Falla con alertas High (`ci/check-zap.py`); las Medium se justifican abajo, una por una |
 | **Gitleaks** | ⚠️ manual + CI no bloqueante | D-01 pendiente de autorización |
 
 ### Checklist ZAP manual (para ejecutar con el stack arriba)
@@ -184,3 +184,23 @@ Códigos cubiertos: 400, 401, 403, 404, 409, 412, 422, 429, 500, 503.
 | Trivy | ⛔ NO EJECUTADO local (CI) |
 | ZAP | ⛔ NO EJECUTADO local |
 | Resiliencia SOAP / broker / outbox | ✅ (unitarias) / ⛔ IT en CI |
+
+## 11. Revisión del 10/11/2026 (criterios Clase 15)
+
+| Hallazgo | Severidad | Estado |
+| --- | --- | --- |
+| DEF-07: rate limit de login evadible rotando IP / `X-Forwarded-For` | Crítica | Corregido en rama, ⏳ CI |
+| DEF-08: rate limit de IA evadible cambiando `sessionId` | Crítica | Corregido en rama, ⏳ CI |
+| DEF-11: la SPA (nginx) no enviaba CSP/HSTS/`X-Content-Type-Options` | Mayor | Corregido en rama, ⏳ verificación con Docker |
+
+Detalle en `10-registro-defectos.md`.
+
+### Justificación de alertas Medium de ZAP
+
+_Completar con el reporte `zap-report` del run del tag: una fila por alerta Medium con
+el motivo (falso positivo, mitigación existente o corrección planificada)._
+
+| Alerta (pluginId) | Endpoint | Justificación |
+| --- | --- | --- |
+| | | |
+

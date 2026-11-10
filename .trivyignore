@@ -1,0 +1,8 @@
+# Excepciones de Trivy con mitigación documentada (criterio Eje D: "0 CVE críticas o
+# altas sin mitigación documentada"). Detalle en docs/testing/08-seguridad-y-resiliencia.md.
+#
+# CVE-2026-22733 — spring-boot-starter-actuator 3.3.5: bypass de autenticación en los
+# endpoints Actuator de Cloud Foundry. No aplica: la app no se despliega en Cloud Foundry
+# y management.cloudfoundry.enabled=false (application.yml). Corrección definitiva:
+# migrar a Spring Boot 3.5.12+ (requiere actualizar springdoc), planificada para la 4.ª entrega.
+CVE-2026-22733

@@ -2,6 +2,7 @@ package com.driveai.service;
 
 import com.driveai.domain.model.IdempotencyRecord;
 import com.driveai.exception.ConflictException;
+import com.driveai.exception.InvalidRequestException;
 import com.driveai.repository.IdempotencyRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,7 +42,8 @@ public class IdempotencyService {
             return action.get();
         }
         if (key.length() > MAX_KEY_LENGTH) {
-            throw new IllegalArgumentException("Idempotency-Key no puede superar 255 caracteres.");
+            // DEF-13: antes era IllegalArgumentException genérica → 500. Ahora 400.
+            throw new InvalidRequestException("Idempotency-Key no puede superar 255 caracteres.");
         }
 
         String hash = hash(request);
