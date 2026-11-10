@@ -40,10 +40,23 @@ git push --force --mirror
 2. Cerrar los PR abiertos basados en la historia vieja y recrearlos.
 3. En `.github/workflows/ci.yml`, job `security-scan`, **quitar
    `continue-on-error: true`** del paso Gitleaks (y el comentario), para que el pipeline
-   falle ante cualquier secreto nuevo.
-4. Marcar D-01 como cerrado en `10-registro-defectos.md` y en Jira, con causa raíz:
+   falle ante cualquier secreto nuevo. Tener en cuenta que `gitleaks-action` en un
+   evento `push` escanea **solo los commits del push** (por eso hoy el job dice
+   `no leaks found` aunque D-01 siga en el historial); la evidencia de G6 es la corrida
+   manual del paso 2 sobre el mirror, con `--log-opts="--all"`. Guardar esa salida.
+4. Marcar D-01 como cerrado en `10-registro-defectos.md` y en Jira
+   ([G7-11](https://uade-team-jjfya715.atlassian.net/browse/G7-11)), con causa raíz:
    "contraseña de demo escrita en el README; se previene con Gitleaks bloqueante en CI".
-5. Recién ahí crear el tag `v1.0-testing` en `main`.
+5. Recién ahí crear el tag `v1.0-testing` en `main`:
+
+   ```bash
+   git checkout main && git pull
+   git tag v1.0-testing && git push origin v1.0-testing
+   ```
+
+   El push del tag dispara el CI (`on.push.tags: ['v*']`). Copiar el link de ese run en
+   `11-informe-ejecucion.md` (encabezado y §5), `02b-matriz-trazabilidad.md` y
+   `10-registro-defectos.md`, y volver a bajar los artefactos.
 
 ## 4. Si GitHub mantiene referencias viejas
 

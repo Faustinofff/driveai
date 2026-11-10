@@ -11,7 +11,10 @@ y `frontend/e2e/`):
 
 **Resultado:** ✅ ejecutado y pasado. Unitarias (174), integración (18) y Newman (54) se
 ejecutaron el 10/11 en la rama `qa/criterios-clase15` sin fallas; E2E del 8/11 (`06`).
-⏳ = pendiente (spec de accesibilidad, que corre en CI). Agregar el link al run del tag.
+La spec de accesibilidad (7 casos) y toda la suite corrieron en verde en CI sobre `main`
+(run <https://github.com/Faustinofff/driveai/actions/runs/42867141379>: unitarias
+178/178, IT 18/18, Newman 55/55, Schemathesis 352/352, Playwright 23/23). El link al run
+del **tag** se agrega cuando se cree el tag (después de sanear D-01, ver `14`).
 
 **Evidencia:** artefactos de CI — `jacoco-report`, `pit-report`, `failsafe-reports`,
 `playwright-report`, `api-contract-reports`, `zap-report`.
@@ -64,9 +67,9 @@ ejecutaron el 10/11 en la rama `qa/criterios-clase15` sin fallas; E2E del 8/11 (
 | HU-11 | Must | Mensaje inválido → DLQ | Error | CN-41 | U `OrderEventsListenerTest#*GoesToDlq` · IT `MessagingIT#invalidMessageIsRoutedToDeadLetterQueue` | ✅ | — |
 | HU-11 | Must | SOAP con Fault de negocio | Error externo | CN-43 | U `soap/SoapVehicleClientTest#businessFaultIsMappedToConflictException` · MVC `#soapBusinessFaultReturns409` · PM 53 | ✅ | — |
 | HU-11 | Must | SOAP con fallo técnico / timeout 5 s | Error externo | CN-44, CB-07 | U `SoapVehicleClientTest#timeoutIsTechnicalFailure`, `#technicalFallbackReturnsPublishedPriceMessage`, `#xxePayloadIsRejected` · PM 52 | ✅ | — |
-| HU-12 Responsive | Should | Mobile 360 px | Feliz | CP-23 | E2E `responsive.spec.ts` · E2E `accessibility.spec.ts` (360 px) | ✅ · ⏳ a11y | — |
+| HU-12 Responsive | Should | Mobile 360 px | Feliz | CP-23 | E2E `responsive.spec.ts` · E2E `accessibility.spec.ts` (360 px) | ✅ (a11y ✅ CI) | DEF-12 (cerrado) |
 | HU-12 | Should | Tablet 768 px | Alternativo | CP-23 | E2E `responsive.spec.ts` | ✅ | — |
-| HU-12 | Should | Desktop 1280 px | Alternativo | CP-23 | E2E `responsive.spec.ts` · E2E `accessibility.spec.ts` (1280 px) | ✅ · ⏳ a11y | — |
+| HU-12 | Should | Desktop 1280 px | Alternativo | CP-23 | E2E `responsive.spec.ts` · E2E `accessibility.spec.ts` (1280 px) | ✅ (a11y ✅ CI) | DEF-12 (cerrado) |
 
 ## Control de huecos
 
