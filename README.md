@@ -215,6 +215,13 @@ npm run dev                     # http://localhost:5173
 
 Toda la evidencia de ejecución se guarda en `docs/testing/`.
 
+> **JDK 23 o superior:** desde Java 23 `javac` ya no ejecuta Lombok automáticamente y la
+> compilación falla con cientos de `cannot find symbol` (`getId()`, `builder()`…). Usar
+> JDK 17/21 o agregar `-Dmaven.compiler.proc=full` a cada comando `mvn`. CI usa JDK 17.
+>
+> **Testcontainers en macOS:** Docker Desktop tiene que estar abierto (`docker ps` sin
+> errores) antes de `mvn -B verify -Pintegration`.
+
 ### Unitarias + MVC + cobertura (sin Docker)
 
 ```bash

@@ -3,6 +3,8 @@ name: CI — DriveAI
 on:
   push:
     branches: [main]
+    # G3: el pipeline tiene que correr y quedar en verde SOBRE el tag de release.
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -287,14 +289,12 @@ jobs:
             --exit-code 1 --format table .
 
   # ---------------------------------------------------------------------------
-  # 6) API: colección Postman con Newman (informativo, no bloqueante)
+  # 6) API + contrato: Newman (éxito y error por endpoint) + Schemathesis (OpenAPI)
   # ---------------------------------------------------------------------------
-  api-newman:
-    name: API · Postman/Newman
+  api-contract:
+    name: API · Newman + contrato OpenAPI (Schemathesis)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: frontend-e2e
-    if: github.event_name == 'workflow_dispatch'
     services:
       postgres:
         image: postgres:16-alpine
@@ -309,13 +309,25 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
     env:
       SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/cardb
       SPRING_DATASOURCE_USERNAME: cardb_user
       SPRING_DATASOURCE_PASSWORD: cardb_pass
       SPRING_PROFILES_ACTIVE: dev
+      RABBITMQ_HOST: localhost
+      RABBITMQ_PORT: '5672'
       OUTBOX_ENABLED: 'false'
       GROQ_API_KEY: ''
+      SOAP_BASE_URL: http://localhost:8089
     steps:
       - uses: actions/checkout@v4
 
@@ -326,30 +338,240 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
           cache: maven
 
-      - name: Empaquetar backend
-        working-directory: backend
-        env:
-          JWT_SECRET: 'ci-ephemeral-jwt-secret-with-at-least-32-bytes-000000'
-          ADMIN_EMAIL: admin@driveai.test
-          ADMIN_PASSWORD: 'CiAdminPassw0rd!'
-        run: mvn -B -DskipTests package
-
-      - name: Levantar backend
-        working-directory: backend
-        env:
-          JWT_SECRET: 'ci-ephemeral-jwt-secret-with-at-least-32-bytes-000000'
-          ADMIN_EMAIL: admin@driveai.test
-          ADMIN_PASSWORD: 'CiAdminPassw0rd!'
+      - name: Generar secretos efímeros
+        id: demo-secrets
         run: |
-          nohup java -jar target/driveai-backend.jar > ../backend-newman.log 2>&1 &
-          for i in $(seq 1 60); do
-            if curl -fsS http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then exit 0; fi
-            sleep 2
+          JWT=$(openssl rand -base64 48); ADMIN=$(openssl rand -base64 24 | tr -d '/+=' | head -c 20)
+          echo "::add-mask::$JWT"; echo "::add-mask::$ADMIN"
+          echo "jwt_secret=$JWT" >> "$GITHUB_OUTPUT"
+          echo "admin_password=$ADMIN" >> "$GITHUB_OUTPUT"
+
+      - name: Levantar mock SOAP + backend
+        env:
+          JWT_SECRET: ${{ steps.demo-secrets.outputs.jwt_secret }}
+          ADMIN_PASSWORD: ${{ steps.demo-secrets.outputs.admin_password }}
+        run: bash ci/start-backend.sh
+
+      - name: Newman — todos los endpoints con caso de éxito y de error
+        env:
+          ADMIN_PASSWORD: ${{ steps.demo-secrets.outputs.admin_password }}
+        run: |
+          npm install -g newman@6
+          mkdir -p reports
+          newman run postman/DriveAI.postman_collection.json \
+            --env-var baseUrl=http://localhost:8080 \
+            --env-var adminEmail="$ADMIN_EMAIL" \
+            --env-var adminPassword="$ADMIN_PASSWORD" \
+            --reporters cli,junit --reporter-junit-export reports/newman.xml
+
+      - name: Schemathesis — respuestas validadas contra el OpenAPI publicado
+        run: |
+          pip install --quiet "schemathesis>=3.39,<4"
+          TOKEN=$(curl -fsS -X POST http://localhost:8080/api/auth/register \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"schemathesis-$(date +%s)@driveai.test\",\"password\":\"SchemaPassw0rd!\",\"fullName\":\"Schemathesis\"}" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+          echo "::add-mask::$TOKEN"
+          # /api/ai y /api/soap se excluyen: su 503/fallback ante proveedor caído es el
+          # comportamiento esperado y está cubierto por Newman y por las unitarias.
+          schemathesis run http://localhost:8080/v3/api-docs \
+            --base-url http://localhost:8080 \
+            -H "Authorization: Bearer $TOKEN" \
+            -c not_a_server_error -c response_schema_conformance \
+            --exclude-path-regex '^/api/(ai|soap)/' \
+            --hypothesis-max-examples 25 \
+            --junit-xml reports/schemathesis.xml
+
+      - name: Publicar reportes de API y contrato
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-contract-reports
+          path: reports
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Log del backend ante fallos
+        if: failure()
+        run: tail -200 backend-ci.log || true
+
+  # ---------------------------------------------------------------------------
+  # 7) DAST: OWASP ZAP API scan autenticado (0 High; Medium se justifican)
+  # ---------------------------------------------------------------------------
+  dast-zap:
+    name: Seguridad · OWASP ZAP (API scan autenticado)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: cardb
+          POSTGRES_USER: cardb_user
+          POSTGRES_PASSWORD: cardb_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cardb_user -d cardb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      rabbitmq:
+        image: rabbitmq:3.13-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/cardb
+      SPRING_DATASOURCE_USERNAME: cardb_user
+      SPRING_DATASOURCE_PASSWORD: cardb_pass
+      SPRING_PROFILES_ACTIVE: dev
+      RABBITMQ_HOST: localhost
+      RABBITMQ_PORT: '5672'
+      OUTBOX_ENABLED: 'false'
+      GROQ_API_KEY: ''
+      SOAP_BASE_URL: http://localhost:8089
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Generar secretos efímeros
+        id: demo-secrets
+        run: |
+          JWT=$(openssl rand -base64 48); ADMIN=$(openssl rand -base64 24 | tr -d '/+=' | head -c 20)
+          echo "::add-mask::$JWT"; echo "::add-mask::$ADMIN"
+          echo "jwt_secret=$JWT" >> "$GITHUB_OUTPUT"
+          echo "admin_password=$ADMIN" >> "$GITHUB_OUTPUT"
+
+      - name: Levantar mock SOAP + backend
+        env:
+          JWT_SECRET: ${{ steps.demo-secrets.outputs.jwt_secret }}
+          ADMIN_PASSWORD: ${{ steps.demo-secrets.outputs.admin_password }}
+        run: bash ci/start-backend.sh
+
+      - name: ZAP API scan (pasivo + activo) autenticado con JWT de cliente
+        run: |
+          TOKEN=$(curl -fsS -X POST http://localhost:8080/api/auth/register \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"zap-$(date +%s)@driveai.test\",\"password\":\"ZapScanPassw0rd!\",\"fullName\":\"ZAP\"}" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+          echo "::add-mask::$TOKEN"
+          mkdir -p zap && chmod 777 zap
+          # -I: los WARN no cortan el job; el corte por High lo hace ci/check-zap.py.
+          docker run --rm --network host \
+            -v "$PWD/zap:/zap/wrk:rw" \
+            -e ZAP_AUTH_HEADER=Authorization \
+            -e ZAP_AUTH_HEADER_VALUE="Bearer $TOKEN" \
+            ghcr.io/zaproxy/zap-stable zap-api-scan.py \
+              -t http://localhost:8080/v3/api-docs -f openapi \
+              -r zap-api.html -J zap-api.json -I \
+              -z "-config scanner.maxScanDurationInMins=6"
+
+      - name: Verificar 0 alertas High
+        run: python3 ci/check-zap.py zap/zap-api.json
+
+      - name: Publicar reporte ZAP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Log del backend ante fallos
+        if: failure()
+        run: tail -200 backend-ci.log || true
+
+  # ---------------------------------------------------------------------------
+  # 8) Estabilidad: la suite unitaria 3 veces seguidas debe dar idéntico resultado
+  # ---------------------------------------------------------------------------
+  flaky-check:
+    name: Backend · 0 tests flaky (3 corridas)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Correr la suite 3 veces y comparar
+        working-directory: backend
+        env:
+          JWT_SECRET: 'ci-ephemeral-jwt-secret-with-at-least-32-bytes-000000'
+        run: |
+          set -o pipefail
+          mvn -B -q test-compile
+          for i in 1 2 3; do
+            mvn -B test | tee "run-$i.log"
+            grep -E 'Tests run: [0-9]+, Failures' "run-$i.log" | tail -1 > "summary-$i.txt"
+            echo "Corrida $i: $(cat summary-$i.txt)"
           done
-          tail -100 ../backend-newman.log; exit 1
+          diff summary-1.txt summary-2.txt && diff summary-2.txt summary-3.txt
+          echo "Las 3 corridas dieron idéntico resultado."
 
-      - name: Instalar Newman
-        run: npm install -g newman
+  # ---------------------------------------------------------------------------
+  # 9) Quality Gate de SonarCloud (requiere SONAR_TOKEN + variables del repo)
+  # ---------------------------------------------------------------------------
+  sonarcloud:
+    name: Calidad · SonarCloud Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Ejecutar colección
-        run: newman run postman/DriveAI.postman_collection.json --env-var baseUrl=http://localhost:8080
+      - name: Configurar JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: Verificar configuración de SonarCloud
+        id: sonar-cfg
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: |
+          # No se corta el pipeline (G3 es eliminatorio), pero queda la advertencia visible:
+          # sin Quality Gate el criterio del Eje B no está cumplido.
+          if [ -z "$SONAR_TOKEN" ] || [ -z "$SONAR_ORGANIZATION" ] || [ -z "$SONAR_PROJECT_KEY" ]; then
+            echo "::warning::SonarCloud NO configurado: falta el secret SONAR_TOKEN y/o las variables SONAR_ORGANIZATION / SONAR_PROJECT_KEY. Ver docs/testing/13-configurar-sonarcloud.md."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Análisis + espera del Quality Gate
+        if: steps.sonar-cfg.outputs.enabled == 'true'
+        working-directory: backend
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JWT_SECRET: 'ci-ephemeral-jwt-secret-with-at-least-32-bytes-000000'
+        run: >-
+          mvn -B verify -Pcoverage
+          org.sonarsource.scanner.maven:sonar-maven-plugin:4.0.0.4121:sonar
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.organization=${{ vars.SONAR_ORGANIZATION }}
+          -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          -Dsonar.qualitygate.wait=true

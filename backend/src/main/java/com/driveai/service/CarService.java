@@ -109,6 +109,9 @@ public class CarService {
         Car car = getById(id);
         try {
             carRepository.delete(car);
+            // DEF-09: sin flush, el DELETE se ejecuta recién al commit (fuera de este
+            // try) y la violación de FK terminaba en 500 en lugar de 409.
+            carRepository.flush();
         } catch (DataIntegrityViolationException ex) {
             throw new ConflictException(
                     "El auto está referenciado en carritos u órdenes y no puede eliminarse.");

@@ -34,6 +34,51 @@ class LoginRateLimitServiceTest {
                 .doesNotThrowAnyException();
     }
 
+    /**
+     * DEF-07: rotar la IP (o falsificar X-Forwarded-For) no debe dar intentos
+     * ilimitados contra una misma cuenta. La cuota por cuenta corta el ataque.
+     */
+    @Test
+    void rotatingIpsAgainstSameAccountIsBlockedByAccountQuota() {
+        LoginRateLimitService service = new LoginRateLimitService(1, 3);
+
+        service.check("1.1.1.1", "victima@driveai.test");
+        service.check("2.2.2.2", "victima@driveai.test");
+        service.check("3.3.3.3", "victima@driveai.test");
+
+        assertThatThrownBy(() -> service.check("4.4.4.4", "victima@driveai.test"))
+                .isInstanceOf(RateLimitExceededException.class)
+                .satisfies(ex -> assertThat(((RateLimitExceededException) ex).getRetryAfterSeconds())
+                        .isEqualTo(20L));
+        // La cuota por cuenta no afecta a otras cuentas.
+        assertThatCode(() -> service.check("4.4.4.4", "otra@driveai.test"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void accountQuotaIsNeverLowerThanIpQuota() {
+        LoginRateLimitService service = new LoginRateLimitService(2, 1);
+
+        service.check("1.1.1.1", "ana@driveai.test");
+
+        assertThatCode(() -> service.check("2.2.2.2", "ana@driveai.test"))
+                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> service.check("3.3.3.3", "ana@driveai.test"))
+                .isInstanceOf(RateLimitExceededException.class);
+    }
+
+    @Test
+    void defaultAccountQuotaIsThreeTimesIpQuota() {
+        LoginRateLimitService service = new LoginRateLimitService(1);
+
+        service.check("1.1.1.1", "ana@driveai.test");
+        service.check("2.2.2.2", "ana@driveai.test");
+        service.check("3.3.3.3", "ana@driveai.test");
+
+        assertThatThrownBy(() -> service.check("4.4.4.4", "ana@driveai.test"))
+                .isInstanceOf(RateLimitExceededException.class);
+    }
+
     @Test
     void emailIsNormalizedForBucketing() {
         LoginRateLimitService service = new LoginRateLimitService(1);

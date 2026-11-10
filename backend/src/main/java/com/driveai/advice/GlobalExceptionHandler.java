@@ -10,6 +10,7 @@ import com.driveai.exception.SoapBusinessException;
 import com.driveai.exception.SoapTechnicalException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -118,8 +120,25 @@ public class GlobalExceptionHandler {
                 "Formato o tipo de dato incorrecto en la solicitud.", null);
     }
 
+    /** DEF-10: {@code ?sort=campoInexistente} terminaba en 500; es un error del cliente. */
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidSort(PropertyReferenceException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Solicitud inválida",
+                "Parámetro de ordenamiento inválido.", null);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleUnexpected(Exception ex) {
+        // DEF-10: las excepciones estándar de Spring MVC (404 ruta inexistente, 405,
+        // 415, parámetro faltante, etc.) traen su propio status 4xx. Antes este
+        // handler genérico las convertía todas en 500.
+        if (ex instanceof ErrorResponse errorResponse) {
+            HttpStatus status = HttpStatus.resolve(errorResponse.getStatusCode().value());
+            if (status != null && status.is4xxClientError()) {
+                return problem(status, status.getReasonPhrase(),
+                        "La solicitud no puede procesarse (" + status.value() + ").", null);
+            }
+        }
         log.error("Error inesperado al procesar la solicitud", ex);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno",
                 "Ocurrió un error inesperado. Inténtalo de nuevo más tarde.", null);

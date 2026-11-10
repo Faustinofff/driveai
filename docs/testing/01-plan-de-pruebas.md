@@ -131,6 +131,10 @@ Severidades:
 
 ### Defectos y limitaciones conocidas
 
+> **Actualizado:** el registro vigente, con la escala de severidad de la cátedra
+> (Bloqueante / Crítica / Mayor / Menor) y los defectos DEF-07…DEF-11, está en
+> `10-registro-defectos.md`. La tabla siguiente queda como historial.
+
 | ID | Severidad | Descripción | Estado |
 | --- | --- | --- | --- |
 | D-01 | S2 | El historial Git contiene una contraseña de demo (ver ADMIN_PASSWORD en .env) en el commit 3f19436. El código actual no la contiene; Gitleaks queda no bloqueante hasta que el equipo autorice reescribir la historia. | Abierto / requiere autorización |

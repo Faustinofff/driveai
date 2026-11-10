@@ -2,6 +2,7 @@ package com.driveai.controller;
 
 import com.driveai.dto.ai.AiRecommendRequest;
 import com.driveai.dto.ai.AiRecommendResponse;
+import com.driveai.security.UserPrincipal;
 import com.driveai.service.GroqAdvisorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,17 +33,22 @@ public class AiAdvisorController {
     })
     @PostMapping("/recommend")
     public AiRecommendResponse recommend(
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody AiRecommendRequest request,
             HttpServletRequest http) {
-        String rateLimitKey = request.sessionId() + "|" + clientIp(http);
-        return advisorService.recommend(request.prompt(), request.sessionId(), rateLimitKey);
+        return advisorService.recommend(request.prompt(), request.sessionId(), rateLimitKey(principal, http));
     }
 
-    private String clientIp(HttpServletRequest http) {
-        String forwarded = http.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+    /**
+     * La cuota se ata a la identidad autenticada (JWT), nunca a datos que manda el
+     * cliente. Antes se usaba {@code sessionId + X-Forwarded-For}: cambiando
+     * cualquiera de los dos en cada request se evadía el límite (defecto DEF-08).
+     */
+    static String rateLimitKey(UserPrincipal principal, HttpServletRequest http) {
+        if (principal != null && principal.id() != null) {
+            return "user:" + principal.id();
         }
-        return http.getRemoteAddr() == null ? "unknown" : http.getRemoteAddr();
+        String remote = http.getRemoteAddr();
+        return "ip:" + (remote == null ? "unknown" : remote);
     }
 }

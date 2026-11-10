@@ -118,6 +118,19 @@ class CarServiceTest {
         carService.delete(9L);
 
         verify(carRepository).delete(existing);
+        verify(carRepository).flush();
+    }
+
+    /** DEF-09: la violación de FK aparece al hacer flush, no al llamar a delete(). */
+    @Test
+    void deleteWhenFkViolationSurfacesOnFlushThrowsConflict() {
+        Car existing = Car.builder().id(9L).brand("Mazda").model("3").year(2020).build();
+        when(carRepository.findById(9L)).thenReturn(Optional.of(existing));
+        doThrow(new DataIntegrityViolationException("fk")).when(carRepository).flush();
+
+        assertThatThrownBy(() -> carService.delete(9L))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("referenciado");
     }
 
     @Test
