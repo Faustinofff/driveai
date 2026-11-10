@@ -19,6 +19,8 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- Trivy: CVE-2025-49146, CVE-2026-42198 y CVE-2026-54291 (HIGH) corregidas en 42.7.12 -->
+        <postgresql.version>42.7.12</postgresql.version>
         <springdoc.version>2.6.0</springdoc.version>
         <bucket4j.version>8.10.1</bucket4j.version>
         <jjwt.version>0.12.6</jjwt.version>

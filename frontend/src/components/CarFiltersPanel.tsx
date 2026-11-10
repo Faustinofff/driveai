@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { FilterX } from 'lucide-react'
 import type { BodyType, CarFilters, FuelType } from '../types'
 import { BODY_LABELS, FUEL_LABELS } from '../types'
@@ -47,6 +47,9 @@ const FUEL_OPTIONS: (FuelType | '')[] = ['', 'GASOLINA', 'DIESEL', 'HIBRIDO', 'E
 const BODY_OPTIONS: (BodyType | '')[] = ['', 'HATCHBACK', 'SEDAN', 'SUV', 'PICKUP']
 
 export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps) {
+  // Ids únicos para asociar cada <label> con su control (WCAG 1.3.1 / 4.1.2; axe select-name).
+  const uid = useId()
+
   const [draft, setDraft] = useState<Draft>(() => toDraft(filters))
   const snapshot = JSON.stringify(filters)
 
@@ -87,8 +90,9 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
 
       <div className="space-y-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Marca</label>
+          <label htmlFor={`${uid}-brand`} className="mb-1 block text-xs font-medium text-slate-500">Marca</label>
           <input
+            id={`${uid}-brand`}
             type="text"
             value={draft.brand}
             onChange={(event) => update({ brand: event.target.value })}
@@ -99,8 +103,9 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Precio min.</label>
+            <label htmlFor={`${uid}-min-price`} className="mb-1 block text-xs font-medium text-slate-500">Precio min.</label>
             <input
+              id={`${uid}-min-price`}
               type="number"
               min={0}
               inputMode="numeric"
@@ -111,8 +116,9 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Precio máx.</label>
+            <label htmlFor={`${uid}-max-price`} className="mb-1 block text-xs font-medium text-slate-500">Precio máx.</label>
             <input
+              id={`${uid}-max-price`}
               type="number"
               min={0}
               inputMode="numeric"
@@ -125,8 +131,9 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Año mínimo</label>
+          <label htmlFor={`${uid}-min-year`} className="mb-1 block text-xs font-medium text-slate-500">Año mínimo</label>
           <input
+            id={`${uid}-min-year`}
             type="number"
             min={1900}
             max={2100}
@@ -139,8 +146,9 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Combustible</label>
+          <label htmlFor={`${uid}-fuel`} className="mb-1 block text-xs font-medium text-slate-500">Combustible</label>
           <select
+            id={`${uid}-fuel`}
             value={draft.fuelType}
             onChange={(event) => update({ fuelType: event.target.value })}
             className="input-base"
@@ -154,8 +162,9 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500">Carrocería</label>
+          <label htmlFor={`${uid}-body`} className="mb-1 block text-xs font-medium text-slate-500">Carrocería</label>
           <select
+            id={`${uid}-body`}
             value={draft.bodyType}
             onChange={(event) => update({ bodyType: event.target.value })}
             className="input-base"

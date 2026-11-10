@@ -65,6 +65,10 @@ management:
     web:
       exposure:
         include: health, info
+  # Mitigación CVE-2026-22733 (bypass de autenticación en endpoints Actuator de
+  # Cloud Foundry): la app no corre en Cloud Foundry; se deshabilitan explícitamente.
+  cloudfoundry:
+    enabled: false
 
 # ===== Propiedades personalizadas del integrador con Groq =====
 groq:

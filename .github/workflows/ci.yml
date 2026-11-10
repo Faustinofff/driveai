@@ -472,7 +472,7 @@ jobs:
             -v "$PWD/zap:/zap/wrk:rw" \
             -e ZAP_AUTH_HEADER=Authorization \
             -e ZAP_AUTH_HEADER_VALUE="Bearer $TOKEN" \
-            ghcr.io/zaproxy/zap-stable zap-api-scan.py \
+            zaproxy/zap-stable zap-api-scan.py \
               -t http://localhost:8080/v3/api-docs -f openapi \
               -r zap-api.html -J zap-api.json -I \
               -z "-config scanner.maxScanDurationInMins=6"

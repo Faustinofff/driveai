@@ -79,7 +79,7 @@ Actuator expone solo `health` e `info`.
 | Herramienta | Estado | Observación |
 | --- | --- | --- |
 | **SpotBugs 4.8.6.6** | ✅ 0 hallazgos | `mvn -B spotbugs:check` con `failOnError=true`; ver §8 |
-| **Trivy** (dependencias) | ⛔ NO EJECUTADO local | Definido en CI (`severity CRITICAL,HIGH`, bloqueante) |
+| **Trivy** (dependencias) | CI run #5 (10/11): 7 HIGH → corregidas 6, mitigada 1 (DEF-14) | `severity CRITICAL,HIGH`, bloqueante. Excepción documentada: CVE-2026-22733 en `.trivyignore` (Cloud Foundry no usado y deshabilitado) |
 | **OWASP ZAP API scan** (pasivo + activo, autenticado) | ⏳ CI, job `dast-zap` | Falla con alertas High (`ci/check-zap.py`); las Medium se justifican abajo, una por una |
 | **Gitleaks** | ⚠️ manual + CI no bloqueante | D-01 pendiente de autorización |
 
