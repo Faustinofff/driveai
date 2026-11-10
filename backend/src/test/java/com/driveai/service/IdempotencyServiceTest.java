@@ -1,5 +1,6 @@
 package com.driveai.service;
 
+import com.driveai.exception.InvalidRequestException;
 import com.driveai.domain.model.IdempotencyRecord;
 import com.driveai.exception.ConflictException;
 import com.driveai.repository.IdempotencyRepository;
@@ -60,7 +61,7 @@ class IdempotencyServiceTest {
         String key = "k".repeat(256);
 
         assertThatThrownBy(() -> service.execute(USER_ID, key, "body", String.class, () -> "ok"))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("255");
     }
 

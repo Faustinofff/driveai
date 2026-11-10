@@ -14,6 +14,7 @@ import com.driveai.dto.order.OrderResponse;
 import com.driveai.exception.ConflictException;
 import com.driveai.exception.GroqApiException;
 import com.driveai.exception.InsufficientStockException;
+import com.driveai.exception.InvalidRequestException;
 import com.driveai.exception.SoapBusinessException;
 import com.driveai.exception.PreconditionFailedException;
 import com.driveai.exception.RateLimitExceededException;
@@ -284,6 +285,21 @@ class ApiSecurityTest {
                         .content("{\"items\":[{\"carId\":7,\"quantity\":1}]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5));
+    }
+
+    /** DEF-13 (hallazgo de Schemathesis): Idempotency-Key > 255 caracteres → 400, no 500. */
+    @Test
+    void oversizedIdempotencyKeyReturns400() throws Exception {
+        when(idempotencyService.execute(anyLong(), any(), any(), eq(OrderResponse.class), any(Supplier.class)))
+                .thenThrow(new InvalidRequestException("Idempotency-Key no puede superar 255 caracteres."));
+
+        mockMvc.perform(post("/api/orders/checkout")
+                        .header(HttpHeaders.AUTHORIZATION, token(42L, "CUSTOMER"))
+                        .header("Idempotency-Key", "k".repeat(300))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\":[{\"carId\":7,\"quantity\":1}]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Idempotency-Key no puede superar 255 caracteres."));
     }
 
     @Test

@@ -149,8 +149,10 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Pasos | 1) `POST /api/orders/checkout` con `{"items": []}` e `Idempotency-Key`. 2) `PUT /api/cars/0` con `If-Match:` vacío y campos de texto vacíos (token CUSTOMER) |
 | Esperado | 400 / 403 / 404 en Problem Details |
 | Obtenido | 500 "Error interno" |
-| Causa raíz | _en análisis: completar con el stack trace del log del backend_ |
-| Estado | **Abierto** |
+| Causa raíz (checkout) | Reproducido en local: `IdempotencyService` rechazaba una `Idempotency-Key` de más de 255 caracteres con `IllegalArgumentException` genérica → handler de `Exception` → 500. Schemathesis oculta (`[Filtered]`) ese header, por eso el curl de reproducción no lo mostraba |
+| Corrección (checkout) | `InvalidRequestException` → 400 Problem Details. Tests: `IdempotencyServiceTest#oversizedKeyIsRejected`, `ApiSecurityTest#oversizedIdempotencyKeyReturns400`, Newman PM 55 |
+| Causa raíz (PUT /api/cars) | No se reproduce en local con el curl reportado (da 400). El job de CI ahora imprime las excepciones del backend al fallar, para capturar la causa en el próximo run |
+| Estado | Checkout: corregido en rama · PUT: **abierto, en análisis** |
 
 ### DEF-14 · Dependencias con CVE altas (Trivy)
 
