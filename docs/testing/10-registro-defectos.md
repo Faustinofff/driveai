@@ -21,7 +21,7 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | --- | --- | --- | --- |
 | Bloqueante | 0 | 0 | 0 |
 | Crítica | **1** (D-01) | 2 (DEF-07, DEF-08) | 0 |
-| Mayor | 1 (D-05) | 2 (DEF-10, DEF-11) | 2 (D-04, DEF-09) |
+| Mayor | 2 (D-05, DEF-13) | 4 (DEF-10, DEF-11, DEF-12, DEF-14) | 2 (D-04, DEF-09) |
 | Menor | 1 (D-03) | 0 | 0 |
 
 > ⚠️ **D-01 abierto con severidad Crítica impide aprobar** (máximo 0, y además G6 es
@@ -123,6 +123,47 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Verificación pendiente | `curl -sI http://localhost:5173/` muestra las cabeceras **y** la app funciona sin errores de CSP en la consola (catálogo, login, carrito, admin, IA) |
 | Estado | **Corregido — cabeceras verificadas con `curl` el 10/11** · falta confirmar en el navegador que la CSP no rompe la app |
 
+### DEF-12 · Filtros del catálogo sin nombre accesible (WCAG 2.2 AA)
+
+| Campo | Valor |
+| --- | --- |
+| Id Jira | _completar_ |
+| Severidad / Prioridad | Mayor / Media (axe la clasifica como violación *critical*) |
+| HU | HU-03 / HU-12 (accesibilidad) |
+| Detectado por | `e2e/accessibility.spec.ts` (axe) en CI, run #5 del 10/11 |
+| Pasos | Abrir `#/catalog` y analizar con axe (WCAG 2.0–2.2 A/AA) |
+| Esperado | 0 violaciones críticas |
+| Obtenido | `select-name`: los `<select>` de Combustible y Carrocería no tienen nombre accesible (el `<label>` no estaba asociado al control) |
+| Causa raíz | `<label>` sin `htmlFor` ni `id` en el control, en todo `CarFiltersPanel` |
+| Corrección | `useId()` + `htmlFor`/`id` en los 6 controles del panel |
+| Estado | Corregido en rama — pendiente re-run de CI |
+
+### DEF-13 · Dos entradas inválidas producen 500 (hallazgo de Schemathesis)
+
+| Campo | Valor |
+| --- | --- |
+| Id Jira | _completar_ |
+| Severidad / Prioridad | Mayor / Media |
+| HU | HU-06 (checkout) · HU-09 (edición de autos) |
+| Detectado por | Schemathesis `not_a_server_error` en CI, run #5 del 10/11 (361/410 casos OK) |
+| Pasos | 1) `POST /api/orders/checkout` con `{"items": []}` e `Idempotency-Key`. 2) `PUT /api/cars/0` con `If-Match:` vacío y campos de texto vacíos (token CUSTOMER) |
+| Esperado | 400 / 403 / 404 en Problem Details |
+| Obtenido | 500 "Error interno" |
+| Causa raíz | _en análisis: completar con el stack trace del log del backend_ |
+| Estado | **Abierto** |
+
+### DEF-14 · Dependencias con CVE altas (Trivy)
+
+| Campo | Valor |
+| --- | --- |
+| Id Jira | _completar_ |
+| Severidad / Prioridad | Mayor / Alta (bloqueaba el CI de `main` desde el 8/11) |
+| Detectado por | Trivy en el job `security-scan` |
+| Obtenido | `org.postgresql:postgresql` 42.7.4 (3 HIGH) · `spring-boot-starter-actuator` 3.3.5 (CVE-2026-22733, HIGH) · `follow-redirects` 1.16.0 vía axios (3 HIGH) |
+| Corrección | pgjdbc → 42.7.12 (`postgresql.version` en `pom.xml`); follow-redirects → 1.16.2 (`npm update follow-redirects`); CVE-2026-22733 mitigada: no se usa Cloud Foundry y `management.cloudfoundry.enabled=false`, excepción documentada en `.trivyignore` |
+| Pendiente | Migrar a Spring Boot 3.5.12+ para eliminar la excepción (4.ª entrega) |
+| Estado | Corregido/mitigado en rama — pendiente re-run de CI |
+
 ### Defectos previos (de `01-plan-de-pruebas.md`)
 
 | Id | Severidad (nueva escala) | Descripción | Estado |
@@ -139,7 +180,8 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | El pipeline no se disparaba con tags | G3 pide CI en verde **sobre el tag** | `on.push.tags: ['v*']` |
 | Newman solo corría con `workflow_dispatch` y cubría 17 requests | Eje B: "colección corrida en CI; todos los endpoints con éxito y error" | Corre en cada push; 54 requests, todos los endpoints con éxito y error |
 | Sin validación de respuestas contra OpenAPI | Eje B: pruebas de contrato | Schemathesis en el job `api-contract` |
-| Sin ZAP en CI | Eje D: ZAP baseline + activo autenticado | Job `dast-zap` (falla con alertas High) |
+| Sin ZAP en CI | Eje D: ZAP baseline + activo autenticado | Job `dast-zap` (falla con alertas High). Primer intento falló al bajar la imagen de `ghcr.io`; se usa `zaproxy/zap-stable` de Docker Hub |
+| El CI de `main` estaba en rojo desde el 8/11 (runs #1–#3) | G3 eliminatorio | Causa: Trivy (DEF-14). Se corrige en esta rama |
 | Sin SonarCloud | Eje B: Quality Gate | Job `sonarcloud` (requiere configurar el token: `13-configurar-sonarcloud.md`) |
 | Sin chequeo de flaky en CI | Eje B: suite 3 veces idéntica | Job `flaky-check` |
 | Sin pruebas de accesibilidad | Eje A: axe/Lighthouse ≥ 90, sin violaciones críticas | `frontend/e2e/accessibility.spec.ts` |
