@@ -79,9 +79,9 @@ Actuator expone solo `health` e `info`.
 | Herramienta | Estado | Observación |
 | --- | --- | --- |
 | **SpotBugs 4.8.6.6** | ✅ 0 hallazgos | `mvn -B spotbugs:check` con `failOnError=true`; ver §8 |
-| **Trivy** (dependencias) | CI run #5 (10/11): 7 HIGH → corregidas 6, mitigada 1 (DEF-14) | `severity CRITICAL,HIGH`, bloqueante. Excepción documentada: CVE-2026-22733 en `.trivyignore` (Cloud Foundry no usado y deshabilitado) |
-| **OWASP ZAP API scan** (pasivo + activo, autenticado) | ⏳ CI, job `dast-zap` | Falla con alertas High (`ci/check-zap.py`); las Medium se justifican abajo, una por una |
-| **Gitleaks** | ⚠️ manual + CI no bloqueante | D-01 pendiente de autorización |
+| **Trivy** (dependencias) | CI run #5 (10/11): 7 HIGH → corregidas 6, mitigada 1 (DEF-14). **Run de `main` (42867141379): 0 hallazgos** | `severity CRITICAL,HIGH`, bloqueante. Excepción documentada: CVE-2026-22733 en `.trivyignore` (Cloud Foundry no usado y deshabilitado) |
+| **OWASP ZAP API scan** (pasivo + activo, autenticado) | ✅ CI, job `dast-zap`, run de `main`: **0 High · 0 Medium · 3 Low · 3 Informational**, 118 reglas PASS | Falla con alertas High (`ci/check-zap.py`); no hubo Medium que justificar; las Low se comentan en §11 |
+| **Gitleaks** | ⚠️ manual + CI no bloqueante | D-01 pendiente de autorización. En CI, `gitleaks-action` sobre un `push` escanea solo los commits nuevos (por eso dice `no leaks found`); el hallazgo viene de la corrida manual con `--log-opts="--all"` |
 
 ### Checklist ZAP manual (para ejecutar con el stack arriba)
 
@@ -181,26 +181,31 @@ Códigos cubiertos: 400, 401, 403, 404, 409, 412, 422, 429, 500, 503.
 | XXE | ✅ |
 | SpotBugs | ✅ 0 hallazgos |
 | Gitleaks | ⚠️ hallazgo histórico D-01 |
-| Trivy | ⛔ NO EJECUTADO local (CI) |
-| ZAP | ⛔ NO EJECUTADO local |
-| Resiliencia SOAP / broker / outbox | ✅ (unitarias) / ⛔ IT en CI |
+| Trivy | ✅ CI (run de `main`): 0 hallazgos CRITICAL/HIGH |
+| ZAP | ✅ CI (run de `main`): 0 High / 0 Medium |
+| Resiliencia SOAP / broker / outbox | ✅ unitarias · ✅ IT 18/18 (local 10/11 y CI) |
 
 ## 11. Revisión del 10/11/2026 (criterios Clase 15)
 
 | Hallazgo | Severidad | Estado |
 | --- | --- | --- |
-| DEF-07: rate limit de login evadible rotando IP / `X-Forwarded-For` | Crítica | Corregido en rama, ⏳ CI |
-| DEF-08: rate limit de IA evadible cambiando `sessionId` | Crítica | Corregido en rama, ⏳ CI |
-| DEF-11: la SPA (nginx) no enviaba CSP/HSTS/`X-Content-Type-Options` | Mayor | Corregido en rama, ⏳ verificación con Docker |
+| DEF-07: rate limit de login evadible rotando IP / `X-Forwarded-For` | Crítica | Cerrado: verificado en CI sobre `main` (G7-12) |
+| DEF-08: rate limit de IA evadible cambiando `sessionId` | Crítica | Cerrado: verificado en CI sobre `main` (G7-13) |
+| DEF-11: la SPA (nginx) no enviaba CSP/HSTS/`X-Content-Type-Options` | Mayor | Corregido: cabeceras con `curl` y navegación sin violaciones de CSP (10/11); falta la pasada con `docker compose up` (G7-16) |
 
 Detalle en `10-registro-defectos.md`.
 
-### Justificación de alertas Medium de ZAP
+### Alertas de ZAP (run de `main` 42867141379, `zap-report/zap-api.json`)
 
-_Completar con el reporte `zap-report` del run del tag: una fila por alerta Medium con
-el motivo (falso positivo, mitigación existente o corrección planificada)._
+No hubo alertas **High** ni **Medium**, así que no hay justificaciones pendientes para
+el criterio del Eje D. Se documentan igual las Low, por transparencia:
 
-| Alerta (pluginId) | Endpoint | Justificación |
-| --- | --- | --- |
-| | | |
+| Alerta (pluginId) | Riesgo | Endpoint | Justificación |
+| --- | --- | --- | --- |
+| A Server Error response code was returned by the server (100000) | Low | `POST /api/ai/recommend` | El 503 es el fallback controlado del asesor sin `GROQ_API_KEY` en CI (D-02, aceptado por diseño); Problem Details sin stack trace |
+| Cross-Origin-Resource-Policy Header Missing or Invalid (90004) | Low | `GET /api/cars`, `GET /api/cars/{id}`, `GET /api/cart`, `GET /v3/api-docs`, `POST /api/orders/checkout` | API JSON consumida solo por la SPA del mismo origen vía nginx; `CORS` con allowlist y `Cross-Origin-Opener-Policy` en la SPA. Agregar `Cross-Origin-Resource-Policy: same-origin` en `SecurityConfig` queda como mejora para la 4.ª entrega |
+| Timestamp Disclosure - Unix (10096) | Low | `GET /api/cars/{id}`, `GET /api/orders`, `POST /api/orders/checkout` | Falso positivo: la "evidencia" `1560958089` es el id de la foto de Unsplash en `imageUrl` (`photo-1560958089-…`, `V2__seed_cars.sql`), no un timestamp del servidor |
+
+_Al crear el tag, volver a bajar `zap-report` del run del tag y confirmar que la tabla
+no cambia._
 
