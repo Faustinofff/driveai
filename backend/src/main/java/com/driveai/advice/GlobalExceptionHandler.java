@@ -20,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.web.firewall.RequestRejectedException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -119,6 +120,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ProblemDetail> handleBadRequest(Exception ex) {
         return problem(HttpStatus.BAD_REQUEST, "Solicitud inválida",
                 "Formato o tipo de dato incorrecto en la solicitud.", null);
+    }
+
+    /**
+     * DEF-13 (hallazgo de Schemathesis): el firewall de Spring Security rechaza headers
+     * con caracteres no permitidos (control, bytes no imprimibles). La excepción se
+     * dispara al leer el header dentro del controller y terminaba en 500.
+     */
+    @ExceptionHandler(RequestRejectedException.class)
+    public ResponseEntity<ProblemDetail> handleRejectedRequest(RequestRejectedException ex) {
+        return problem(HttpStatus.BAD_REQUEST, "Solicitud inválida",
+                "La solicitud contiene caracteres no permitidos en un header o en la URL.", null);
     }
 
     /** DEF-13: datos inválidos validados a mano (p. ej. Idempotency-Key demasiado larga). */
