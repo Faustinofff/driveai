@@ -19,6 +19,8 @@ import com.driveai.repository.OrderRepository;
 import com.driveai.security.UserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -174,6 +176,33 @@ class OrderServiceTest {
                 12L, OrderStatus.CANCELLED, principal(USER_ID, "CUSTOMER")))
                 .isInstanceOf(ConflictException.class)
                 .hasMessageContaining("Transición de estado inválida");
+    }
+
+    /**
+     * Criterio Eje B (patrón State): TODA transición inválida se rechaza con
+     * ConflictException (→ 409 en GlobalExceptionHandler), sin persistir ni
+     * publicar eventos. Se prueba con ADMIN para que no la corte la regla de rol.
+     */
+    @ParameterizedTest(name = "{0} → {1} es inválida")
+    @CsvSource({
+            "PENDING,   PENDING",
+            "CONFIRMED, CONFIRMED",
+            "CONFIRMED, PENDING",
+            "CANCELLED, PENDING",
+            "CANCELLED, CONFIRMED",
+            "CANCELLED, CANCELLED"
+    })
+    void everyInvalidTransitionIsRejectedWithConflict(OrderStatus from, OrderStatus to) {
+        Order order = order(40L, USER_ID, from);
+        when(orderRepository.findById(40L)).thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() -> orderService.changeStatus(40L, to, principal(1L, "ADMIN")))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("Transición de estado inválida: " + from + " → " + to);
+
+        assertThat(order.getStatus()).isEqualTo(from);
+        verify(orderRepository, never()).save(any(Order.class));
+        verify(outboxService, never()).recordOrderEvent(any(), any());
     }
 
     @Test

@@ -121,6 +121,12 @@ Característica: Detalle de vehículo
     Cuando pulso "Volver al catálogo", la "X" o la tecla Escape
     Entonces el modal se cierra
     Y sigo en el catálogo
+
+  Escenario: Vehículo inexistente
+    Dado que no existe un auto con id 99999999
+    Cuando consulto GET /api/cars/99999999
+    Entonces recibo un error 404 en formato application/problem+json
+    Y la respuesta no incluye stack trace ni datos internos
 ```
 
 **Casos:** CP-05, CP-21.
@@ -188,6 +194,13 @@ Característica: Checkout
     Cuando repito la misma request con "k-1"
     Entonces recibo la misma orden
     Y no se crea una segunda orden
+
+  Escenario: Broker de mensajería caído al confirmar (falla de sistema externo)
+    Dado que RabbitMQ no está disponible
+    Cuando finalizo una compra válida
+    Entonces la orden se crea CONFIRMED y el stock se descuenta
+    Y el evento queda en outbox_events con estado PENDING
+    Y cuando el broker vuelve, el evento se publica sin intervención manual
 ```
 
 **Casos:** CP-11, CN-28, CB-05, CN-31.

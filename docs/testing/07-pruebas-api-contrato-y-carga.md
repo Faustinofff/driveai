@@ -147,7 +147,8 @@ k6 terminó con **exit code 0**: los tres umbrales (`p(95)<500`,
 | Actividad | Estado |
 | --- | --- |
 | `api-tests.http` | ✅ versionado (ejecución manual) |
-| Postman/Newman | ✅ versionado (CI opcional) |
+| Postman/Newman | ✅ versionado · 54 requests, éxito y error por endpoint · ⏳ corre en CI en cada push (job `api-contract`) |
+| Schemathesis (OpenAPI) | ⏳ CI, job `api-contract` (`not_a_server_error`, `response_schema_conformance`) |
 | `WsdlContractTest` | ✅ 3/3 |
 | `ApiContractIT` | ⛔ NO EJECUTADO (Docker) |
 | OpenAPI | ✅ generado y validado por contrato |

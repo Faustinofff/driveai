@@ -38,6 +38,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mapping.PropertyReferenceException;
+import org.springframework.data.util.TypeInformation;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -52,6 +54,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -385,6 +388,40 @@ class ApiSecurityTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /** DEF-10: un sort por un campo inexistente es un 400, no un 500. */
+    @Test
+    void invalidSortPropertyReturns400() throws Exception {
+        when(carService.list(any(), any())).thenThrow(new PropertyReferenceException(
+                "noExiste", TypeInformation.of(Car.class), List.of()));
+
+        mockMvc.perform(get("/api/cars").param("sort", "noExiste"))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE,
+                        org.hamcrest.Matchers.containsString("application/problem+json")))
+                .andExpect(jsonPath("$.detail").value("Parámetro de ordenamiento inválido."));
+    }
+
+    /** DEF-10: un método HTTP no soportado debe responder 405, no 500. */
+    @Test
+    void unsupportedMethodReturns405NotServerError() throws Exception {
+        mockMvc.perform(patch("/api/cars/1")
+                        .header(HttpHeaders.AUTHORIZATION, token(1L, "ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(jsonPath("$.status").value(405));
+    }
+
+    /** DEF-10: un Content-Type no soportado debe responder 415, no 500. */
+    @Test
+    void unsupportedMediaTypeReturns415NotServerError() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("hola"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415));
+    }
+
     @Test
     void unexpectedErrorReturns500WithoutLeakingDetails() throws Exception {
         when(carService.list(any(), any())).thenThrow(new RuntimeException("database password leaked"));
@@ -405,6 +442,32 @@ class ApiSecurityTest {
                         .content("{\"prompt\":\"auto\",\"sessionId\":\"s\"}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.title").value("Servicio de IA no disponible"));
+    }
+
+    /**
+     * DEF-08: la cuota de IA se ata al usuario del JWT. Cambiar sessionId o
+     * X-Forwarded-For en cada request no debe generar una clave nueva.
+     */
+    @Test
+    void aiRateLimitKeyIsBoundToAuthenticatedUserNotToClientData() throws Exception {
+        when(groqAdvisorService.recommend(anyString(), anyString(), anyString()))
+                .thenReturn(new AiRecommendResponse("s", "ok", List.of()));
+
+        mockMvc.perform(post("/api/ai/recommend")
+                        .header(HttpHeaders.AUTHORIZATION, token(42L, "CUSTOMER"))
+                        .header("X-Forwarded-For", "203.0.113.7")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\":\"auto\",\"sessionId\":\"rotada-1\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/ai/recommend")
+                        .header(HttpHeaders.AUTHORIZATION, token(42L, "CUSTOMER"))
+                        .header("X-Forwarded-For", "198.51.100.9")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\":\"auto\",\"sessionId\":\"rotada-2\"}"))
+                .andExpect(status().isOk());
+
+        verify(groqAdvisorService).recommend("auto", "rotada-1", "user:42");
+        verify(groqAdvisorService).recommend("auto", "rotada-2", "user:42");
     }
 
     @Test
