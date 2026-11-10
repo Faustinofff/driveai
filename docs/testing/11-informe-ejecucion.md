@@ -53,7 +53,7 @@ informan números de corridas reales; lo que todavía no corrió figura como
 | SonarCloud Quality Gate | — | Aprobado; 0 bugs Blocker/Critical; 0 vulnerabilidades; dup. ≤ 3 %; ratings A; 100 % hotspots revisados | ⏳ **todavía no configurado**: el job `sonarcloud` del run de `main` terminó en verde en 5 s solo porque no hay `SONAR_TOKEN` ni variables (emite un `::warning::` y no analiza). Configurar según `13` y **adjuntar captura del Quality Gate** |
 | OWASP ZAP (API scan pasivo + activo, autenticado) | 0 High · 0 Medium · 3 Low · 3 Informational (118 PASS) | 0 High; Medium justificadas | ✅ CI (`zap-report`); detalle de las Low en `08` §11 |
 | Trivy (dependencias, `CRITICAL,HIGH`) | 0 hallazgos | 0 CVE críticas/altas sin mitigación | ✅ CI (`security-scan`), con la excepción documentada en `.trivyignore` (DEF-14) |
-| Gitleaks | 1 hallazgo histórico (D-01) | 0 | ❌ hasta sanear el historial. El job de CI dice `no leaks found` porque en un `push` solo escanea los commits nuevos; no vale como evidencia de G6 |
+| Gitleaks 8.30.1 (historial completo, `--log-opts="--all"`) | `no leaks found` tras sanear D-01 el 10/11 | 0 | ✅ local (mirror y clon) · en CI, paso "Gitleaks (historial completo, bloqueante)" del job `security-scan` a partir del tag |
 
 ## 4. Performance
 
@@ -78,9 +78,9 @@ completo incluyendo checkout, que es uno de los 3 endpoints críticos.
 ## 6. Defectos
 
 Ver `10-registro-defectos.md` (issues `G7-11` … `G7-19` en Jira). Al cierre: 0
-Bloqueantes y 0 Críticos abiertos es condición de salida; hoy **D-01 (Crítica) sigue
-abierto**. DEF-07…DEF-10 y DEF-12…DEF-14 quedaron verificados en el run de `main`;
-DEF-11 verificado salvo la pasada con el stack completo (§7).
+Bloqueantes y 0 Críticos abiertos es condición de salida: **se cumple** (D-01 cerrado el
+10/11 con el historial saneado). DEF-07…DEF-10 y DEF-12…DEF-14 quedaron verificados en
+el run de `main`; DEF-11 verificado salvo la pasada con el stack completo (§7).
 
 ## 7. Verificaciones manuales del 10/11
 

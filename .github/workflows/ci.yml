@@ -273,14 +273,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Gitleaks (secretos en el historial)
+      - name: Gitleaks (commits del push)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # El historial contiene una contraseña de demo histórica (commit 3f19436).
-        # El escaneo se reporta pero no bloquea hasta que el equipo autorice la
-        # reescritura de historia. Ver docs/testing/08-seguridad-y-resiliencia.md.
-        continue-on-error: true
+
+      # G6: la cátedra escanea TODO el historial. gitleaks-action en un push solo mira
+      # los commits nuevos, así que este paso recorre el historial completo y bloquea.
+      # Historial saneado el 10/11/2026 (D-01, docs/testing/14-saneamiento-historial-D01.md).
+      - name: Gitleaks (historial completo, bloqueante)
+        run: |
+          docker run --rm -v "$PWD:/repo" \
+            -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            zricethezav/gitleaks:v8.30.1 \
+            git /repo --log-opts="--all" --exit-code 1 --no-banner --redact
 
       - name: Trivy (vulnerabilidades de dependencias)
         run: |

@@ -26,12 +26,13 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Severidad | Abiertos | Corregidos, pendientes de verificación | Cerrados |
 | --- | --- | --- | --- |
 | Bloqueante | 0 | 0 | 0 |
-| Crítica | **1** (D-01) | 0 | 2 (DEF-07, DEF-08) |
+| Crítica | 0 | 0 | 3 (D-01, DEF-07, DEF-08) |
 | Mayor | 0 | 1 (DEF-11, falta la pasada con `docker compose up`) | 7 (D-04, D-05, DEF-09, DEF-10, DEF-12, DEF-13, DEF-14) |
 | Menor | 1 (D-03) | 0 | 0 |
 
-> ⚠️ **D-01 abierto con severidad Crítica impide aprobar** (máximo 0, y además G6 es
-> eliminatorio). Ver `14-saneamiento-historial-D01.md`.
+> ✅ **D-01 cerrado el 10/11/2026**: historial reescrito y verificado con Gitleaks
+> (`no leaks found` sobre todo el historial). Ver `14-saneamiento-historial-D01.md`.
+> Al cierre no queda ningún Bloqueante ni Crítico abierto.
 
 ## Detalle
 
@@ -39,16 +40,19 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 
 | Campo | Valor |
 | --- | --- |
-| Id Jira | [G7-11](https://uade-team-jjfya715.atlassian.net/browse/G7-11) · En curso · responsable: ffiordalisi (dueño del repo) |
+| Id Jira | [G7-11](https://uade-team-jjfya715.atlassian.net/browse/G7-11) · Listo · responsable: ffiordalisi (dueño del repo) |
 | Severidad / Prioridad | **Crítica** / Alta |
 | HU | Transversal (G6) |
 | Detectado por | Gitleaks + búsqueda manual |
-| Pasos | `gitleaks detect --source . --log-opts="--all"` sobre el repo clonado completo |
+| Pasos | `gitleaks git . --log-opts="--all"` sobre un clon `--mirror` completo |
 | Esperado | 0 secretos en todo el historial |
-| Obtenido | 1 hallazgo en el commit `3f19436` (README) |
-| Evidencia | Corrida manual de Gitleaks sobre el historial completo. **Ojo:** en CI `gitleaks-action` sobre un evento `push` solo escanea los commits del push, por eso el job `security-scan` del run de `main` dice `no leaks found`; no es evidencia de que el historial esté limpio |
-| Estado | **Abierto** — requiere reescritura de historia acordada por el equipo + rotación |
-| Tratamiento | Procedimiento en `14-saneamiento-historial-D01.md`; luego quitar `continue-on-error` del paso Gitleaks |
+| Obtenido | Contraseña de demo del admin en el README de 3 commits (`3f19436`, `4d0e6d7`, `43903d0`). Al verificar con Gitleaks 8.30.1 apareció además una clave JWT de prueba de alta entropía en `ApiContractIT.java` (10 commits, regla `generic-api-key`): no era un secreto real, pero la cátedra la contaría como hallazgo |
+| Causa raíz | Contraseña de demo escrita en el README; se previene con Gitleaks bloqueante sobre el historial completo en CI |
+| Corrección | 10/11/2026, autorizada por el equipo: `git filter-branch --tree-filter` sobre un mirror (no había Python para `git filter-repo`), reemplazando la contraseña por `REDACTED` en el README y la clave JWT de prueba por un valor de baja entropía con el mismo efecto (≥ 32 bytes, UTF-8). `push --force` de `main` y `qa/criterios-clase15` desde la cuenta de JIA2004 (colaborador con push). `ADMIN_PASSWORD` rotada por el dueño del repo antes del push |
+| Evidencia | Antes: Gitleaks `12 commits scanned … leaks found: 1` + `git grep` → 3 archivos. Después: Gitleaks `12 commits scanned … no leaks found` (mirror y clon local) + `git grep` → 0. El árbol de `main` quedó idéntico salvo la línea de `ApiContractIT.java`. Mapeo de hashes: `3f19436→4b38562`, `b4554eb→3226acf`, `024f6fd→b1baece` |
+| Estado | **Cerrado 10/11/2026** |
+| Pendiente residual | GitHub sigue sirviendo los commits viejos por URL directa (`/commit/3f19436…`); pedir a GitHub Support "remove sensitive data" (`14` §4). La contraseña ya rotada neutraliza el riesgo |
+| Tratamiento posterior | Gitleaks bloqueante en CI: `gitleaks-action` sobre los commits del push **y** una corrida `docker run … gitleaks git --log-opts="--all" --exit-code 1` sobre el historial completo en cada run |
 
 ### DEF-07 · Bypass del rate limit de login rotando la IP o `X-Forwarded-For`
 

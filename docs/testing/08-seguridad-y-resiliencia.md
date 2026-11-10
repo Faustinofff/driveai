@@ -66,13 +66,14 @@ Actuator expone solo `health` e `info`.
   vacíos/placeholder.
 - Se hizo una búsqueda manual de los secretos reales (JWT y `GROQ_API_KEY`) en todo el
   historial: **0 coincidencias**.
-- **Hallazgo D-01:** la contraseña de demo (ver `ADMIN_PASSWORD` en `.env`) aparece **1 vez** en el
-  historial (commit `3f19436`, README). El código actual ya no la contiene. Eliminarla
-  requiere reescribir la historia, acción que **no se ejecutó** por no contar con
-  autorización explícita del equipo.
-- Por ese motivo, en CI Gitleaks se ejecuta con `continue-on-error: true` y el hallazgo
-  queda documentado. **G6 no puede declararse aprobado hasta sanear el historial con
-  autorización.**
+- **Hallazgo D-01 (cerrado el 10/11/2026):** la contraseña de demo aparecía en el README
+  de 3 commits (`3f19436`, `4d0e6d7`, `43903d0`) y una clave JWT de prueba de alta
+  entropía en `ApiContractIT.java`. Con autorización del equipo se reescribió el
+  historial (`14-saneamiento-historial-D01.md`), se rotó `ADMIN_PASSWORD` y se verificó
+  con Gitleaks 8.30.1 sobre todo el historial: **`no leaks found`**.
+- En CI Gitleaks ahora es **bloqueante** y corre dos veces en `security-scan`: la action
+  sobre los commits del push y `gitleaks git --log-opts="--all" --exit-code 1` sobre el
+  historial completo.
 
 ## 7. Dependencias y DAST
 
@@ -81,7 +82,7 @@ Actuator expone solo `health` e `info`.
 | **SpotBugs 4.8.6.6** | ✅ 0 hallazgos | `mvn -B spotbugs:check` con `failOnError=true`; ver §8 |
 | **Trivy** (dependencias) | CI run #5 (10/11): 7 HIGH → corregidas 6, mitigada 1 (DEF-14). **Run de `main` (42867141379): 0 hallazgos** | `severity CRITICAL,HIGH`, bloqueante. Excepción documentada: CVE-2026-22733 en `.trivyignore` (Cloud Foundry no usado y deshabilitado) |
 | **OWASP ZAP API scan** (pasivo + activo, autenticado) | ✅ CI, job `dast-zap`, run de `main`: **0 High · 0 Medium · 3 Low · 3 Informational**, 118 reglas PASS | Falla con alertas High (`ci/check-zap.py`); no hubo Medium que justificar; las Low se comentan en §11 |
-| **Gitleaks** | ⚠️ manual + CI no bloqueante | D-01 pendiente de autorización. En CI, `gitleaks-action` sobre un `push` escanea solo los commits nuevos (por eso dice `no leaks found`); el hallazgo viene de la corrida manual con `--log-opts="--all"` |
+| **Gitleaks 8.30.1** | ✅ `no leaks found` sobre el historial completo (10/11, tras sanear D-01) | Bloqueante en CI sobre los commits del push (action) y sobre todo el historial (`docker run … gitleaks git --log-opts="--all" --exit-code 1`) |
 
 ### Checklist ZAP manual (para ejecutar con el stack arriba)
 
@@ -180,7 +181,7 @@ Códigos cubiertos: 400, 401, 403, 404, 409, 412, 422, 429, 500, 503.
 | Cabeceras de seguridad y CORS | ✅ |
 | XXE | ✅ |
 | SpotBugs | ✅ 0 hallazgos |
-| Gitleaks | ⚠️ hallazgo histórico D-01 |
+| Gitleaks | ✅ historial saneado (D-01 cerrado 10/11), 0 hallazgos |
 | Trivy | ✅ CI (run de `main`): 0 hallazgos CRITICAL/HIGH |
 | ZAP | ✅ CI (run de `main`): 0 High / 0 Medium |
 | Resiliencia SOAP / broker / outbox | ✅ unitarias · ✅ IT 18/18 (local 10/11 y CI) |

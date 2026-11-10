@@ -1,5 +1,16 @@
 # 14 · Saneamiento del historial (D-01 → G6)
 
+> **Ejecutado el 10/11/2026** con autorización del equipo (push desde la cuenta de
+> JIA2004, colaborador con permiso de push; `main` no tiene protección de rama).
+> Diferencias respecto del procedimiento de abajo: se usó `git filter-branch
+> --tree-filter` porque la máquina no tenía Python para `git filter-repo`; además de la
+> contraseña del README se reemplazó la clave JWT de prueba de `ApiContractIT.java`
+> (Gitleaks 8.30.1 la marcaba como `generic-api-key`). Resultado: `git grep` 0 archivos y
+> Gitleaks `12 commits scanned … no leaks found` sobre mirror y clon local. Hashes nuevos:
+> `main` `024f6fd → b1baece`, `3f19436 → 4b38562`. Detalle y evidencia en `10`, D-01.
+> **Cada integrante tiene que borrar su clon y clonar de nuevo.** Los commits viejos
+> siguen accesibles por URL directa en GitHub hasta pedir a Support que los purgue (§4).
+
 G6 es **eliminatorio**: la cátedra corre gitleaks/trufflehog sobre **todo el historial**.
 Que el código actual esté limpio no alcanza. D-01 (contraseña de demo en el commit
 `3f19436`) tiene que salir del historial **antes de crear el tag**.
