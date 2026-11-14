@@ -28,6 +28,11 @@ La primera corrida dejo contextos Spring en cache despues de detener los contene
 con reconexiones de listeners y scheduler al terminar. Se agrega @DirtiesContext(AFTER_CLASS)
 en las cuatro suites de integracion para cerrar sus recursos al terminar cada clase.
 El nuevo flujo Compose y esta limpieza deben contrastarse con su propia corrida final.
+
+La primera ejecucion Compose (43620579700) construyo y levanto las cinco capas, pero
+detecto JSON no UTF-8 en la respuesta 401 del filtro de seguridad. Se corrige
+SecurityConfig para escribir bytes UTF-8 y se agrega una regresion que parsea esos
+bytes con Jackson. El smoke conserva su validacion estricta; no se relaja el cliente.
 Los bloqueos locales de las secciones siguientes quedan como registro historico y no invalidan la evidencia remota.
 
 ## Comprobaciones aprobadas

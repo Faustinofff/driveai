@@ -110,6 +110,8 @@ public class SecurityConfig {
         body.put("detail", detail);
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
-        response.getWriter().write(objectMapper.writeValueAsString(body));
+        // JSON se transmite en UTF-8; getWriter() podia usar ISO-8859-1 en
+        // el contenedor real y producir bytes invalidos para textos con tildes.
+        response.getOutputStream().write(objectMapper.writeValueAsBytes(body));
     }
 }
