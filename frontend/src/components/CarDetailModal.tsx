@@ -41,7 +41,7 @@ export function CarDetailModal({ car, onClose, onAdd, added }: CarDetailModalPro
     >
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white shadow-2xl animate-fade-in-up scrollbar-none">
+      <div className="relative max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-white text-slate-900 shadow-2xl animate-fade-in-up scrollbar-none">
         <button
           type="button"
           onClick={onClose}

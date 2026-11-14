@@ -34,7 +34,7 @@ test('HTML de catálogo y respuesta IA se muestran como texto, sin ejecutar scri
     await page.route('**/api/ai/recommend', (route) => route.fulfill({ json: {
       sessionId: 'xss-test', reasoning: payload, recommendations: [],
     } }))
-    await page.goto('/#/ai')
+    await page.goto('/?security-case=ai#/ai')
     await page.getByPlaceholder('Describe el auto que buscas.').fill('Recomienda un auto')
     await page.getByRole('button', { name: /Enviar/ }).click()
     const answer = page.getByTestId('ai-assistant-message')

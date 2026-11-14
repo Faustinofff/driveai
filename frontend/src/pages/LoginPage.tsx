@@ -94,7 +94,7 @@ export function LoginPage({ onSuccess, notice }: LoginPageProps) {
             setError(null)
           }}
           className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
-            mode === 'login' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            mode === 'login' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-600 hover:text-slate-700'
           }`}
         >
           <LogIn className="h-4 w-4" />
@@ -107,7 +107,7 @@ export function LoginPage({ onSuccess, notice }: LoginPageProps) {
             setError(null)
           }}
           className={`flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
-            mode === 'register' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            mode === 'register' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-600 hover:text-slate-700'
           }`}
         >
           <UserPlus className="h-4 w-4" />
