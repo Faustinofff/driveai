@@ -33,10 +33,10 @@ async function analyze(page: Page, testInfo: TestInfo, name: string) {
   }
 
   const critical = results.violations
-    .filter((v) => v.impact === 'critical')
+    .filter((v) => v.impact === 'critical' || v.impact === 'serious')
     .map((v) => `${v.id}: ${v.help} → ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)
 
-  expect(critical, `Violaciones críticas de accesibilidad en ${name}`).toEqual([])
+  expect(critical, `Violaciones críticas o serias de accesibilidad en ${name}`).toEqual([])
 }
 
 test.describe('HU-UX — Accesibilidad WCAG 2.2 AA (axe)', () => {
