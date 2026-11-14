@@ -35,6 +35,10 @@ spring:
     password: "${RABBITMQ_PASSWORD:guest}"
     virtual-host: ${RABBITMQ_VHOST:/}
     connection-timeout: 3s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
     listener:
       simple:
         default-requeue-rejected: false
@@ -105,6 +109,7 @@ app:
   outbox:
     enabled: ${OUTBOX_ENABLED:true}
     publish-interval-ms: ${OUTBOX_PUBLISH_INTERVAL_MS:2000}
+    confirm-timeout-ms: ${OUTBOX_CONFIRM_TIMEOUT_MS:5000}
 
 # ===== Resiliencia: reintento acotado + circuit breaker + fallback =====
 resilience4j:

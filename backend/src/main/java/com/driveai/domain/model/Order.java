@@ -1,6 +1,8 @@
 package com.driveai.domain.model;
 
 import com.driveai.domain.enums.OrderStatus;
+import com.driveai.exception.ConflictException;
+import lombok.AccessLevel;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -54,6 +56,7 @@ public class Order {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Setter(AccessLevel.NONE)
     private OrderStatus status;
 
     @Column(name = "total_amount", nullable = false, precision = 14, scale = 2)
@@ -80,6 +83,18 @@ public class Order {
     @PreUpdate
     void onUpdate() {
         updatedAt = Instant.now();
+    }
+
+    /**
+     * Toda modificacion de una orden existente atraviesa su State.
+     * El servicio controla permisos y transaccion; la entidad protege la regla.
+     */
+    public void transitionTo(OrderStatus target) {
+        if (status == null || !status.canTransitionTo(target)) {
+            throw new ConflictException(
+                    "Transición de estado inválida: " + status + " → " + target + ".");
+        }
+        status = target;
     }
 
     public void addItem(OrderItem item) {

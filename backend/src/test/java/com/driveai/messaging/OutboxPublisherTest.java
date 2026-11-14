@@ -10,6 +10,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.MessagePostProcessor;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.core.ReturnedMessage;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -19,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -61,11 +66,12 @@ class OutboxPublisherTest {
         OutboxEvent event = event(0);
         when(outboxRepository.findTop50ByStatusOrderByCreatedAtAsc("PENDING")).thenReturn(List.of(event));
 
+        confirmNextPublish(true, false);
         publisher.publishPending();
 
         assertThat(event.getStatus()).isEqualTo("SENT");
         assertThat(event.getSentAt()).isNotNull();
-        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class), any(MessagePostProcessor.class));
+        verify(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class), any(MessagePostProcessor.class), any(CorrelationData.class));
         verify(outboxRepository).save(event);
     }
 
@@ -74,7 +80,7 @@ class OutboxPublisherTest {
         OutboxEvent event = event(2);
         when(outboxRepository.findTop50ByStatusOrderByCreatedAtAsc("PENDING")).thenReturn(List.of(event));
         doThrow(new AmqpException("broker down"))
-                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class), any(MessagePostProcessor.class));
+                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class), any(MessagePostProcessor.class), any(CorrelationData.class));
 
         publisher.publishPending();
 
@@ -88,7 +94,7 @@ class OutboxPublisherTest {
         OutboxEvent event = event(100);
         when(outboxRepository.findTop50ByStatusOrderByCreatedAtAsc("PENDING")).thenReturn(List.of(event));
         doThrow(new AmqpException("still down"))
-                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class), any(MessagePostProcessor.class));
+                .when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class), any(MessagePostProcessor.class), any(CorrelationData.class));
 
         publisher.publishPending();
 
@@ -108,7 +114,62 @@ class OutboxPublisherTest {
 
         assertThat(event.getStatus()).isEqualTo("FAILED");
         assertThat(event.getAttempts()).isEqualTo(1);
-        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class), any(MessagePostProcessor.class));
+        verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class), any(MessagePostProcessor.class), any(CorrelationData.class));
+    }
+
+    private void confirmNextPublish(boolean ack, boolean returned) {
+        doAnswer(invocation -> {
+            MessagePostProcessor processor = invocation.getArgument(3);
+            Message message = processor.postProcessMessage(
+                    new Message(new byte[0], new MessageProperties()));
+            assertThat(message.getMessageProperties().getMessageId()).isEqualTo("outbox-5");
+            CorrelationData data = invocation.getArgument(4);
+            if (returned) {
+                data.setReturned(new ReturnedMessage(message, 312, "NO_ROUTE",
+                        MessagingConfig.ORDER_EXCHANGE, MessagingConfig.ORDER_ROUTING_KEY));
+            }
+            data.getFuture().complete(new CorrelationData.Confirm(ack, ack ? null : "nack"));
+            return null;
+        }).when(rabbitTemplate).convertAndSend(anyString(), anyString(), any(Object.class),
+                any(MessagePostProcessor.class), any(CorrelationData.class));
+    }
+
+    @Test
+    void nackKeepsEventPending() {
+        OutboxEvent event = event(0);
+        when(outboxRepository.findTop50ByStatusOrderByCreatedAtAsc("PENDING")).thenReturn(List.of(event));
+        confirmNextPublish(false, false);
+
+        publisher.publishPending();
+
+        assertThat(event.getStatus()).isEqualTo("PENDING");
+        assertThat(event.getSentAt()).isNull();
+        assertThat(event.getAttempts()).isEqualTo(1);
+    }
+
+    @Test
+    void unroutableMessageIsNotMarkedSentEvenWhenBrokerAcks() {
+        OutboxEvent event = event(0);
+        when(outboxRepository.findTop50ByStatusOrderByCreatedAtAsc("PENDING")).thenReturn(List.of(event));
+        confirmNextPublish(true, true);
+
+        publisher.publishPending();
+
+        assertThat(event.getStatus()).isEqualTo("PENDING");
+        assertThat(event.getSentAt()).isNull();
+        assertThat(event.getAttempts()).isEqualTo(1);
+    }
+
+    @Test
+    void missingConfirmationKeepsEventPending() {
+        OutboxEvent event = event(0);
+        when(outboxRepository.findTop50ByStatusOrderByCreatedAtAsc("PENDING")).thenReturn(List.of(event));
+        ReflectionTestUtils.setField(publisher, "confirmTimeoutMs", 1L);
+
+        publisher.publishPending();
+
+        assertThat(event.getStatus()).isEqualTo("PENDING");
+        assertThat(event.getLastError()).contains("confirmacion");
     }
 
     @Test
