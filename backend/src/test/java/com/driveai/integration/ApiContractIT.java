@@ -403,4 +403,39 @@ class ApiContractIT {
                 .statusCode(200)
                 .body("status", equalTo("UP"));
     }
+
+    @Test
+    void sqlPayloadsAreTreatedAsDataAndDoNotBroadenQueries() {
+        long baseline = given().get("/api/cars").then().statusCode(200)
+                .extract().jsonPath().getLong("totalElements");
+        for (String payload : java.util.List.of("' OR 1=1 --", "'; DROP TABLE cars; --",
+                "' UNION SELECT password_hash FROM app_users --")) {
+            given().queryParam("q", payload).get("/api/cars")
+                    .then().statusCode(200).body("totalElements", equalTo(0));
+            given().queryParam("brand", payload).get("/api/cars")
+                    .then().statusCode(200).body("totalElements", equalTo(0));
+        }
+        assertThat(given().get("/api/cars").then().statusCode(200)
+                .extract().jsonPath().getLong("totalElements")).isEqualTo(baseline);
+    }
+
+    @Test
+    void storedHtmlRemainsJsonDataWithoutMassAssignedFields() {
+        String token = adminToken();
+        String payload = "<img src=x onerror=alert('xss')>";
+        Map<String, Object> car = carPayload("LiteralHTML-" + UUID.randomUUID());
+        car.put("description", payload);
+        car.put("role", "ADMIN");
+        car.put("id", 999999999);
+        long id = given().auth().oauth2(token).contentType(ContentType.JSON).body(car)
+                .post("/api/cars").then().statusCode(201).body("description", equalTo(payload))
+                .extract().jsonPath().getLong("id");
+        try {
+            given().get("/api/cars/" + id).then().statusCode(200)
+                    .contentType(ContentType.JSON).body("description", equalTo(payload));
+            assertThat(id).isNotEqualTo(999999999L);
+        } finally {
+            given().auth().oauth2(token).delete("/api/cars/" + id).then().statusCode(204);
+        }
+    }
 }

@@ -73,6 +73,31 @@ La spec de accesibilidad (7 casos) y toda la suite corrieron en verde en CI sobr
 
 ## Control de huecos
 
+### Regresiones del cierre final (14/11/2026)
+
+Se conserva la evidencia histórica de arriba. Estas filas agregan trazabilidad de
+las correcciones y comprobaciones nuevas; los resultados se acreditan con las
+corridas del PR de cierre, sin cambiar las fechas de las ejecuciones anteriores.
+
+| HU | Jira | Criterio agregado/completado | Prueba o comprobación |
+|---|---|---|---|
+| HU-06 | KAN-22 | Si falla una línea posterior, rollback de stock previo, versión, orden y outbox; carrito conservado | IT `OrderConcurrencyIT#failedLaterLineRollsBackEarlierStockAndPreservesCart` |
+| HU-06 | KAN-22 | Dos compradores disputan la última unidad; solo uno compra | IT `OrderConcurrencyIT#twoBuyersCannotPurchaseTheSameLastUnit` |
+| HU-07 | KAN-21 | State protegido desde la entidad, matriz completa y cancelación concurrente sin doble reintegro | U `OrderStateTest`; IT `OrderConcurrencyIT#simultaneousCancellationsRestoreStockAndRecordEventOnlyOnce` |
+| HU-10 | KAN-35 | Payloads SQL no alteran ni amplían catálogo; integridad posterior | IT `ApiContractIT#sqlPayloadsAreTreatedAsDataAndDoNotBroadenQueries` |
+| HU-09/10 | KAN-35 | HTML persistido es JSON literal y no permite campos administrativos | IT `ApiContractIT#storedHtmlRemainsJsonDataWithoutMassAssignedFields` |
+| HU-08/10 | KAN-35 | Payload XSS del catálogo y del proveedor se muestra como texto, sin nodos ejecutables ni efecto en window | E2E `security-xss.spec.ts` (proveedor simulado solo para renderer IA) |
+| HU-10 | KAN-33 | Problem Details de seguridad contiene bytes JSON UTF-8 válidos | MVC `ApiSecurityTest#securityErrorsContainValidUtf8Json` |
+| HU-11 | KAN-24/25 | ACK/retorno/timeout y dos eventos realmente consumidos | U `OutboxPublisherTest`; IT `MessagingIT`; `ci/verify-partial2.py --messaging` |
+| HU-12 | KAN-41 | Sin hallazgos critical/serious en axe; score >=90 en home/catálogo/login mobile y desktop | E2E `accessibility.spec.ts`; `ci/check-lighthouse.py` y seis JSON Lighthouse |
+| HU-01/02/04 | KAN-45 | 50 VUs durante 5 min, p95 <500 ms y errores <1% | `load-tests/k6.js`; artifact `final-qa-evidence/k6-summary.json` |
+| HU-04/06 | KAN-46 | Instrucciones del manual: detalle, carrito, cantidades, eliminación y confirmación | E2E `cart-checkout.spec.ts`; smoke Compose |
+| HU-08 | KAN-42/43 | Consultas normales, límite, IDs inventados, prompt injection, datos/claves y fuera de dominio contra Groq real | `ci/verify-live-ai.py`; ejecución manual requiere clave; NO se acredita mediante mocks |
+
+Evidencia reproducible: `.github/workflows/ci.yml`, `delivery-smoke.yml` y
+`final-validation.yml`. El registro de cierre distingue comprobaciones aprobadas,
+pendientes de credenciales y la aceptación humana del equipo.
+
 - 12 HU, 47 criterios: todos con al menos un caso y al menos un test automatizado.
 - HU-04 tenía solo 2 criterios (faltaba el de error) y HU-06 no tenía el criterio de falla
   del sistema externo: se agregaron en `historias-gherkin.md` en esta revisión.
