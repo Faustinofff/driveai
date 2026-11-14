@@ -13,9 +13,9 @@ No se modifico Jira. No se acredita despliegue remoto ni integracion a main.
 | Primer flujo punta a punta | Registro/login → catalogo → carrito → checkout → stock/orden/outbox → RabbitMQ → consumidor | Hay Playwright y ApiContractIT existentes; agregado smoke por origen frontend y consulta del consumo. No ejecutado contra stack aqui |
 | Patrones con ADR | 11 decisiones en docs/adr, incluidas las cinco familias nombradas en la memoria anterior | Documentados con rutas y pruebas; revision del equipo pendiente |
 | State en entidad y HTTP 409 | Order.transitionTo, estados con comportamiento, ConflictException y handler existente. Lock de orden evita doble reintegro simultaneo | Corregido; 22 pruebas de dominio aprobadas con JUnit local. HTTP/concurrencia pendientes de ejecucion |
-| JWT y roles | JwtService/Filter, SecurityConfig, BCrypt, @PreAuthorize ADMIN, propiedad por JWT | Existente e inspeccionado; suite de seguridad no ejecutable aqui |
+| JWT y roles | JwtService/Filter, SecurityConfig, BCrypt, @PreAuthorize ADMIN, propiedad por JWT | Suite de backend y API aprobadas en CI; ver registro de ejecucion |
 | Mensajeria en un proceso | Checkout escribe outbox; publisher confirma ACK sin NO_ROUTE; consumidor registra evento. DLQ e idempotencia existentes | Corregida confirmacion de envio; broker no ejecutado aqui |
-| Primeros tests unitarios | Suite existente y nuevas pruebas de State/ACK/NACK/retorno/timeout | 22 pruebas de dominio aprobadas mediante launcher JUnit; suite completa Maven bloqueada por dependencias/DNS |
+| Primeros tests unitarios | Suite existente y nuevas pruebas de State/ACK/NACK/retorno/timeout | 192 pruebas aprobadas en CI, cobertura y SpotBugs exitosos; 3 corridas consecutivas exitosas |
 | Jira al dia | Tareas y criterios en JIRA.md; no se encontraron IDs/tablero verificables en repo | Pendiente de acceso al tablero real |
 | Feedback de diseño incorporado | Corregidas consistencia de State, concurrencia y documentacion. No hay devolucion docente identificable | Revision tecnica realizada; feedback docente pendiente de aportar y contrastar |
 
@@ -51,7 +51,7 @@ el smoke crea usuarios, un auto, una orden cancelada y eventos; conserva esos da
 ~~~powershell
 $env:ADMIN_EMAIL = 'email-admin-del-entorno'
 $env:ADMIN_PASSWORD = Read-Host 'Password admin' -MaskInput
-python ci/verify-partial2.py --messaging --report work/partial2-smoke.json
+python ci/verify-partial2.py --frontend --messaging --report work/partial2-smoke.json
 Push-Location backend
 mvn -B test
 mvn -B verify -Pintegration,coverage
@@ -67,6 +67,8 @@ Pop-Location
 PowerShell 7 permite -MaskInput. Si la base usa otros nombres, pasar --db-user y --db-name al smoke.
 Para probar solo API sin Nginx: --base-url http://localhost:8080; esto NO comprueba el proxy del frontend.
 Sin --messaging se omite expresamente la verificacion del broker.
+El workflow .github/workflows/delivery-smoke.yml ejecuta ese mismo flujo contra las imagenes
+de produccion de Compose y conserva el reporte, estado y logs como artifacts del PR.
 
 La suite existente de integracion incluye ApiContractIT, PersistenceIT y MessagingIT; se suma OrderConcurrencyIT.
 Una ejecucion exitosa de unitarias no sustituye integracion ni Playwright.

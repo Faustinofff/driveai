@@ -7,6 +7,29 @@ repositorio, la creacion de fix/entrega-2-core fue exitosa. Los errores de GitHu
 indicados abajo corresponden al intento inicial; ya no bloquean la publicacion.
 Las pruebas de CI deben consultarse en el PR y no se dan por aprobadas anticipadamente.
 
+## Evidencia obtenida en GitHub Actions
+
+PR: https://github.com/Faustinofff/driveai/pull/3
+
+Primera corrida: https://github.com/Faustinofff/driveai/actions/runs/43620190567
+Commit probado: b7f377901d3a84ba68c93ef63f0b0a3703dd3ae2.
+
+- Backend: 192 pruebas, 0 fallos, 0 errores y 0 omitidas; umbrales JaCoCo cumplidos y SpotBugs exitoso.
+- Suite repetida tres veces: 192 pruebas exitosas en cada corrida.
+- Frontend: build de produccion exitoso y 23 pruebas Playwright aprobadas.
+- API: Newman y contrato OpenAPI exitosos.
+- Seguridad: Gitleaks, Trivy y ZAP exitosos.
+- SonarCloud: job exitoso pero analisis omitido por falta de configuracion; no equivale a un Quality Gate evaluado.
+
+- Integracion Testcontainers: 19 pruebas aprobadas, incluida cancelacion concurrente y recuperacion del broker.
+- Mutacion PIT: 222 mutaciones generadas, 164 eliminadas (74%); build exitoso.
+
+La primera corrida dejo contextos Spring en cache despues de detener los contenedores,
+con reconexiones de listeners y scheduler al terminar. Se agrega @DirtiesContext(AFTER_CLASS)
+en las cuatro suites de integracion para cerrar sus recursos al terminar cada clase.
+El nuevo flujo Compose y esta limpieza deben contrastarse con su propia corrida final.
+Los bloqueos locales de las secciones siguientes quedan como registro historico y no invalidan la evidencia remota.
+
 ## Comprobaciones aprobadas
 
 - Compilacion real con JDK 17 de OrderStatus, Order, OrderItem, Car, enums y ConflictException, procesando Lombok con la biblioteca disponible localmente.

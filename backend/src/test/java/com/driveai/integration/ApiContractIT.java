@@ -8,6 +8,7 @@ import io.restassured.path.json.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -49,6 +50,7 @@ import static org.hamcrest.Matchers.notNullValue;
                 "app.jwt.secret=integration-test-only-jwt-secret-not-a-real-secret-00000000000000",
                 "app.outbox.publish-interval-ms=3600000"
         })
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers
 class ApiContractIT {
 

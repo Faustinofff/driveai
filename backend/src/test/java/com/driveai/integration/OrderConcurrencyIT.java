@@ -9,6 +9,7 @@ import com.driveai.service.OrderService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -23,6 +24,7 @@ import java.util.concurrent.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = "app.outbox.enabled=false")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers
 class OrderConcurrencyIT {
     @Container @ServiceConnection

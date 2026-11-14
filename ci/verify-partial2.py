@@ -20,6 +20,8 @@ def require(condition, message):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://localhost:5173")
+    parser.add_argument("--frontend", action="store_true",
+                        help="Comprueba que el origen sirve el HTML de la SPA")
     parser.add_argument("--messaging", action="store_true",
                         help="Verifica outbox y consumo en PostgreSQL via Docker Compose")
     parser.add_argument("--db-user", default="cardb_user")
@@ -52,6 +54,13 @@ def main():
 
     try:
         # Usa el origen del frontend para probar tambien Nginx -> API.
+        if args.frontend:
+            with urllib.request.urlopen(args.base_url.rstrip("/") + "/", timeout=20) as response:
+                page = response.read().lower()
+                require(response.status == 200 and b"<html" in page and b'id="root"' in page,
+                        "El origen no sirve el HTML de la SPA")
+                report["checks"].append({"check": "HTML frontend desplegado",
+                                          "expected": 200, "actual": response.status})
         request("catalogo publico", "GET", "/api/cars", 200)
         request("carrito anonimo", "GET", "/api/cart", 401)
         admin = request("login admin", "POST", "/api/auth/login", 200,
