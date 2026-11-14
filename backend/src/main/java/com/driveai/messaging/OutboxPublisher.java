@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.MessageDeliveryMode;
+import org.springframework.amqp.AmqpException;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -14,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Publicador del patrón Transactional Outbox.
@@ -40,6 +45,9 @@ public class OutboxPublisher {
     @Value("${app.outbox.enabled:true}")
     private boolean enabled;
 
+    @Value("${app.outbox.confirm-timeout-ms:5000}")
+    private long confirmTimeoutMs = 5000;
+
     @Scheduled(fixedDelayString = "${app.outbox.publish-interval-ms:2000}")
     @Transactional
     public void publishPending() {
@@ -50,6 +58,7 @@ public class OutboxPublisher {
         for (OutboxEvent event : pending) {
             try {
                 OrderEvent orderEvent = objectMapper.readValue(event.getPayload(), OrderEvent.class);
+                CorrelationData correlation = new CorrelationData();
                 rabbitTemplate.convertAndSend(
                         MessagingConfig.ORDER_EXCHANGE,
                         MessagingConfig.ORDER_ROUTING_KEY,
@@ -59,7 +68,8 @@ public class OutboxPublisher {
                             message.getMessageProperties().setContentType("application/json");
                             message.getMessageProperties().setMessageId("outbox-" + event.getId());
                             return message;
-                        });
+                        }, correlation);
+                awaitBrokerConfirmation(correlation);
                 event.setStatus("SENT");
                 event.setSentAt(Instant.now());
                 event.setLastError(null);
@@ -83,6 +93,20 @@ public class OutboxPublisher {
                         event.getId(), event.getAttempts());
             }
             outboxRepository.save(event);
+        }
+    }
+
+    private void awaitBrokerConfirmation(CorrelationData correlation) {
+        try {
+            CorrelationData.Confirm confirm = correlation.getFuture().get(confirmTimeoutMs, TimeUnit.MILLISECONDS);
+            if (!confirm.isAck() || correlation.getReturned() != null) {
+                throw new AmqpException("Broker rechazo el evento o no existe una cola de destino");
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new AmqpException("Espera de confirmacion interrumpida", ex);
+        } catch (ExecutionException | TimeoutException ex) {
+            throw new AmqpException("No se recibio confirmacion del broker", ex);
         }
     }
 

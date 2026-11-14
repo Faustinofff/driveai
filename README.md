@@ -1,5 +1,9 @@
 # 🚗 DriveAI — E-commerce de autos con asesor de compra por IA
 
+**Entrega parcial 2 (16/11):** [matriz de verificación, correcciones y demo reproducible](docs/entrega-2/VERIFICACION.md),
+[ADRs de los patrones](docs/adr/README.md) y [seguimiento pendiente de Jira](docs/entrega-2/JIRA.md).
+Las cifras históricas de QA de este README no acreditan la ejecución de las correcciones nuevas.
+
 Plataforma completa de venta de autos usados preparada para la evaluación de Testing del
 TP Obligatorio (UADE).
 

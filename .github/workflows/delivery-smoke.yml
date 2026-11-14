@@ -1,0 +1,59 @@
+name: Entrega 2 - flujo desplegado
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: delivery-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deployed-flow:
+    name: Compose - Nginx, checkout y consumo RabbitMQ
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ADMIN_EMAIL: partial2-admin@driveai.test
+      SPRING_PROFILES_ACTIVE: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generar credenciales efimeras
+        shell: bash
+        run: |
+          jwt_secret=$(openssl rand -base64 48)
+          admin_password=$(openssl rand -hex 24)
+          echo "::add-mask::$jwt_secret"
+          echo "::add-mask::$admin_password"
+          echo "JWT_SECRET=$jwt_secret" >> "$GITHUB_ENV"
+          echo "ADMIN_PASSWORD=$admin_password" >> "$GITHUB_ENV"
+
+      - name: Construir y desplegar las capas
+        run: docker compose up -d --build --wait --wait-timeout 240
+
+      - name: Probar frontend, JWT, roles, checkout, State y mensajeria
+        run: python3 ci/verify-partial2.py --frontend --messaging --report work/partial2-smoke.json
+
+      - name: Registrar estado y logs del despliegue
+        if: always()
+        run: |
+          mkdir -p work
+          docker compose ps -a > work/compose-ps.txt
+          docker compose logs --no-color backend rabbitmq frontend > work/compose.log
+
+      - name: Conservar evidencia
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: partial2-deployed-flow
+          path: work/
+          retention-days: 7
+
+      - name: Detener servicios
+        if: always()
+        run: docker compose down

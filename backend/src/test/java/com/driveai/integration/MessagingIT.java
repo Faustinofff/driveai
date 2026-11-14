@@ -16,6 +16,7 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.RabbitMQContainer;
@@ -48,6 +49,7 @@ import static org.awaitility.Awaitility.await;
         "app.outbox.enabled=true",
         "app.outbox.publish-interval-ms=3600000"
 })
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MessagingIT {

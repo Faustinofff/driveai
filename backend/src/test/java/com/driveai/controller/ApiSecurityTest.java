@@ -137,6 +137,18 @@ class ApiSecurityTest {
     }
 
     @Test
+    void securityErrorsContainValidUtf8Json() throws Exception {
+        var response = mockMvc.perform(get("/api/cart"))
+                .andExpect(status().isUnauthorized())
+                .andReturn().getResponse();
+        // Parsear los bytes (no el String del mock) detecta ISO-8859-1 invalido.
+        var problem = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(response.getContentAsByteArray());
+        org.assertj.core.api.Assertions.assertThat(problem.path("detail").asText())
+                .isEqualTo("Inicia sesión para acceder a esta funcionalidad.");
+    }
+
+    @Test
     void carDetailReturnsEtag() throws Exception {
         when(carService.getById(7L)).thenReturn(car());
 

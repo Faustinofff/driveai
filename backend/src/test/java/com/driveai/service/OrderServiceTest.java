@@ -124,6 +124,22 @@ class OrderServiceTest {
     }
 
     @Test
+    void checkoutLocksCarsInAscendingIdOrder() {
+        Car first = car(7L, 5, new BigDecimal("10000.00"));
+        Car second = car(10L, 5, new BigDecimal("10000.00"));
+        when(carRepository.findWithLockingById(7L)).thenReturn(Optional.of(first));
+        when(carRepository.findWithLockingById(10L)).thenReturn(Optional.of(second));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        orderService.checkout(new CheckoutRequest(List.of(
+                new CheckoutItemRequest(10L, 1), new CheckoutItemRequest(7L, 1))), USER_ID);
+
+        var locks = org.mockito.Mockito.inOrder(carRepository);
+        locks.verify(carRepository).findWithLockingById(7L);
+        locks.verify(carRepository).findWithLockingById(10L);
+    }
+
+    @Test
     void listForUserReturnsOnlyOwnOrdersNewestFirst() {
         Order order = order(5L, USER_ID, OrderStatus.CONFIRMED);
         when(orderRepository.findByUserIdOrderByCreatedAtDesc(USER_ID)).thenReturn(List.of(order));
@@ -145,7 +161,7 @@ class OrderServiceTest {
     @Test
     void adminCanConfirmPendingOrder() {
         Order order = order(11L, 99L, OrderStatus.PENDING);
-        when(orderRepository.findById(11L)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithLockingById(11L)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         OrderResponse response = orderService.changeStatus(
@@ -158,7 +174,7 @@ class OrderServiceTest {
     @Test
     void customerCannotConfirmOwnOrder() {
         Order order = order(11L, USER_ID, OrderStatus.PENDING);
-        when(orderRepository.findByIdAndUserId(11L, USER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithLockingByIdAndUserId(11L, USER_ID)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.changeStatus(
                 11L, OrderStatus.CONFIRMED, principal(USER_ID, "CUSTOMER")))
@@ -170,7 +186,7 @@ class OrderServiceTest {
     @Test
     void invalidTransitionReturnsConflict() {
         Order order = order(12L, USER_ID, OrderStatus.CANCELLED);
-        when(orderRepository.findByIdAndUserId(12L, USER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithLockingByIdAndUserId(12L, USER_ID)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.changeStatus(
                 12L, OrderStatus.CANCELLED, principal(USER_ID, "CUSTOMER")))
@@ -194,7 +210,7 @@ class OrderServiceTest {
     })
     void everyInvalidTransitionIsRejectedWithConflict(OrderStatus from, OrderStatus to) {
         Order order = order(40L, USER_ID, from);
-        when(orderRepository.findById(40L)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithLockingById(40L)).thenReturn(Optional.of(order));
 
         assertThatThrownBy(() -> orderService.changeStatus(40L, to, principal(1L, "ADMIN")))
                 .isInstanceOf(ConflictException.class)
@@ -210,7 +226,7 @@ class OrderServiceTest {
         Car car = car(7L, 2, new BigDecimal("22500.00"));
         Order order = order(13L, USER_ID, OrderStatus.CONFIRMED);
         order.addItem(OrderItem.builder().car(car).quantity(3).unitPrice(car.getPrice()).build());
-        when(orderRepository.findByIdAndUserId(13L, USER_ID)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithLockingByIdAndUserId(13L, USER_ID)).thenReturn(Optional.of(order));
         when(carRepository.findWithLockingById(7L)).thenReturn(Optional.of(car));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -224,7 +240,7 @@ class OrderServiceTest {
     @Test
     void adminCancelsOrderOfAnotherUser() {
         Order order = order(14L, 99L, OrderStatus.PENDING);
-        when(orderRepository.findById(14L)).thenReturn(Optional.of(order));
+        when(orderRepository.findWithLockingById(14L)).thenReturn(Optional.of(order));
         when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         OrderResponse response = orderService.changeStatus(

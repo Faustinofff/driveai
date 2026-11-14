@@ -21,7 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.TreeMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -47,7 +48,7 @@ public class OrderService {
 
     @Transactional
     public OrderResponse checkout(CheckoutRequest request, Long userId) {
-        Map<Long, Integer> grouped = new LinkedHashMap<>();
+        Map<Long, Integer> grouped = new TreeMap<>();
         for (CheckoutItemRequest item : request.items()) {
             grouped.merge(item.carId(), item.quantity(), Integer::sum);
         }
@@ -113,32 +114,30 @@ public class OrderService {
     public OrderResponse changeStatus(Long orderId, OrderStatus target, UserPrincipal principal) {
         boolean admin = "ADMIN".equals(principal.role());
         Order order = (admin
-                ? orderRepository.findById(orderId)
-                : orderRepository.findByIdAndUserId(orderId, principal.id()))
+                ? orderRepository.findWithLockingById(orderId)
+                : orderRepository.findWithLockingByIdAndUserId(orderId, principal.id()))
                 .orElseThrow(() -> new ResourceNotFoundException("Orden", orderId));
 
         if (!admin && target != OrderStatus.CANCELLED) {
             throw new AccessDeniedException("Solo un administrador puede confirmar órdenes.");
         }
 
-        OrderStatus current = order.getStatus();
-        if (!current.canTransitionTo(target)) {
-            throw new ConflictException(
-                    "Transición de estado inválida: " + current + " → " + target + ".");
-        }
+        // La fila permanece bloqueada hasta el commit: otra cancelacion debe
+        // releer CANCELLED y responder 409 antes de devolver stock o crear eventos.
+        order.transitionTo(target);
 
         if (target == OrderStatus.CANCELLED) {
             restoreStock(order);
         }
 
-        order.setStatus(target);
         Order saved = orderRepository.save(order);
         outboxService.recordOrderEvent(saved, "ORDER_STATUS_CHANGED");
         return OrderResponse.from(saved);
     }
 
     private void restoreStock(Order order) {
-        for (OrderItem item : order.getItems()) {
+        for (OrderItem item : order.getItems().stream()
+                .sorted(Comparator.comparing(item -> item.getCar().getId())).toList()) {
             Car car = carRepository.findWithLockingById(item.getCar().getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Auto", item.getCar().getId()));
             car.setStock(car.getStock() + item.getQuantity());
