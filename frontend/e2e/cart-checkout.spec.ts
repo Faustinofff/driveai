@@ -28,10 +28,11 @@ test.describe('HU-CART — Carrito y checkout', () => {
       await detail.getByRole('button', { name: 'Volver al catálogo' }).click()
       await page.getByRole('button', { name: 'Abrir carrito' }).click()
       const cart = page.getByRole('dialog')
+      const quantity = cart.getByRole('button', { name: 'Disminuir cantidad' }).locator('..').locator('span')
       await cart.getByRole('button', { name: 'Aumentar cantidad' }).click()
-      await expect(cart.getByText('2', { exact: true })).toBeVisible()
+      await expect(quantity).toHaveText('2')
       await cart.getByRole('button', { name: 'Disminuir cantidad' }).click()
-      await expect(cart.getByText('1', { exact: true })).toBeVisible()
+      await expect(quantity).toHaveText('1')
       await cart.getByRole('button', { name: 'Quitar del carrito' }).click()
       await expect(cart.getByRole('button', { name: 'Finalizar compra' })).toBeHidden()
     } finally {

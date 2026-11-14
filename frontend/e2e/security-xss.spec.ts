@@ -35,7 +35,8 @@ test('HTML de catálogo y respuesta IA se muestran como texto, sin ejecutar scri
       sessionId: 'xss-test', reasoning: payload, recommendations: [],
     } }))
     await page.goto('/?security-case=ai#/ai')
-    await page.getByPlaceholder('Describe el auto que buscas.').fill('Recomienda un auto')
+    await expect(page.getByRole('heading', { name: 'Asesor de compra con IA' })).toBeVisible()
+    await page.getByPlaceholder(/Describe el auto que buscas/).fill('Recomienda un auto')
     await page.getByRole('button', { name: /Enviar/ }).click()
     const answer = page.getByTestId('ai-assistant-message')
     await expect(answer).toContainText(payload)
