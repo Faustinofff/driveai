@@ -97,7 +97,13 @@ class HttpGroqApiClientTest {
         server.verify(postRequestedFor(urlEqualTo("/chat/completions"))
                 .withRequestBody(equalToJson("""
                         {"model":"openai/gpt-oss-20b","temperature":0.2,"max_completion_tokens":100,
-                         "response_format":{"type":"json_object"},"reasoning_effort":"low","include_reasoning":false,
+                         "response_format":{"type":"json_schema","json_schema":{
+                           "name":"driveai_recommendation","strict":true,"schema":{
+                             "type":"object","properties":{
+                               "reasoning":{"type":"string"},
+                               "recommendedCarIds":{"type":"array","items":{"type":"integer"}}},
+                             "required":["reasoning","recommendedCarIds"],"additionalProperties":false}}},
+                         "reasoning_effort":"low","include_reasoning":false,
                          "messages":[{"role":"system","content":"system"},{"role":"user","content":"user"}]}
                         """)));
     }
@@ -111,6 +117,19 @@ class HttpGroqApiClientTest {
                 .isInstanceOf(GroqApiException.class)
                 .hasMessageContaining("GROQ_MODEL")
                 .hasMessageNotContaining("private-token-value");
+    }
+
+    @Test
+    void distinguishesInvalidGenerationWithoutExposingIt() {
+        server.stubFor(post(urlEqualTo("/chat/completions")).willReturn(aResponse().withStatus(400)
+                .withBody("""
+                        {"error":{"code":"json_validate_failed","failed_generation":"private-generated-text"}}
+                        """)));
+
+        assertThatThrownBy(() -> client().chatCompletion("s", "u"))
+                .isInstanceOf(GroqApiException.class)
+                .hasMessageContaining("formato requerido")
+                .hasMessageNotContaining("private-generated-text");
     }
 
     @Test

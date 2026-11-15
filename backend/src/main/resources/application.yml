@@ -83,7 +83,7 @@ groq:
     # Timeout externo acotado a 5 s (requisito de resiliencia).
     connect-timeout-seconds: ${GROQ_CONNECT_TIMEOUT_SECONDS:5}
     read-timeout-seconds: ${GROQ_READ_TIMEOUT_SECONDS:5}
-    max-tokens: 1024
+    max-tokens: 2048
     temperature: 0.2
 
 # ===== Servicio SOAP externo (mock controlable en docker compose) =====

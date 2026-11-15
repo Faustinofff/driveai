@@ -54,6 +54,18 @@ public class HttpGroqApiClient implements GroqApiClient {
         if (properties.model().startsWith("openai/gpt-oss-")) {
             body.put("reasoning_effort", "low");
             body.put("include_reasoning", false);
+            body.put("response_format", Map.of(
+                    "type", "json_schema",
+                    "json_schema", Map.of(
+                            "name", "driveai_recommendation", "strict", true,
+                            "schema", Map.of(
+                                    "type", "object",
+                                    "properties", Map.of(
+                                            "reasoning", Map.of("type", "string"),
+                                            "recommendedCarIds", Map.of("type", "array",
+                                                    "items", Map.of("type", "integer"))),
+                                    "required", List.of("reasoning", "recommendedCarIds"),
+                                    "additionalProperties", false))));
         }
 
         String raw;
@@ -75,6 +87,10 @@ public class HttpGroqApiClient implements GroqApiClient {
 
     private GroqApiException mapHttpError(RestClientResponseException ex) {
         int status = ex.getStatusCode().value();
+        if (status == 400 && invalidStructuredOutput(ex)) {
+            return new GroqApiException(
+                    "El modelo de IA no pudo generar el formato requerido. Inténtalo de nuevo.", ex);
+        }
         if (status == 429) {
             return new GroqApiException(
                     "El servicio de IA está saturado en este momento. Inténtalo de nuevo en unos segundos.", ex);
@@ -88,6 +104,17 @@ public class HttpGroqApiClient implements GroqApiClient {
                     "La configuración del modelo de IA no es válida. Revisa GROQ_MODEL y los parámetros de la solicitud.", ex);
         }
         return new GroqApiException("El servicio de IA no está disponible por el momento.", ex);
+    }
+
+    private boolean invalidStructuredOutput(RestClientResponseException ex) {
+        try {
+            JsonNode root = objectMapper.readTree(ex.getResponseBodyAsString());
+            if (root == null) return false;
+            String code = root.path("error").path("code").asText();
+            return "json_validate_failed".equals(code) || "json_schema_validation_failed".equals(code);
+        } catch (JsonProcessingException ignored) {
+            return false;
+        }
     }
 
     private String extractContent(String rawResponse) {
