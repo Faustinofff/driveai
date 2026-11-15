@@ -63,6 +63,11 @@ export function setup() {
   }
 
   const token = JSON.parse(register.body).token
+  // Preparar el carrito antes de medir GET; la carga mide lectura, no su alta.
+  const cart = http.get(`${BASE_URL}/api/cart`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (cart.status !== 200) throw new Error(`No se pudo preparar el carrito: ${cart.status}`)
 
   // Se resuelve un ID real del catálogo para que el detalle mida un 200 y no
   // un 404 si el seed no incluye el ID configurado por defecto.
@@ -114,6 +119,8 @@ export function handleSummary(data) {
   const summary = {
     generatedAt: new Date().toISOString(),
     baseUrl: BASE_URL,
+    sourceSha: __ENV.SOURCE_SHA || null,
+    identityModel: '50 VUs; una cuenta sintetica compartida; carrito preparado en setup',
     scenario: { vus: 50, duration: '5m', endpoints: ['/api/cars', '/api/cars/{id}', '/api/cart'] },
     metrics: {
       http_req_duration: data.metrics.http_req_duration,
@@ -121,10 +128,13 @@ export function handleSummary(data) {
       iterations: data.metrics.iterations,
       business_errors: data.metrics.business_errors,
     },
-    thresholds: data.root_group.checks,
+    checks: data.root_group.checks,
+    thresholds: Object.fromEntries(Object.entries(data.metrics)
+      .filter(([, metric]) => metric.thresholds)
+      .map(([name, metric]) => [name, metric.thresholds])),
   }
   return {
-    'load-tests/summary.json': JSON.stringify(summary, null, 2),
-    stdout: `\nDriveAI load test summary written to load-tests/summary.json\n`,
+    [__ENV.SUMMARY_PATH || 'load-tests/summary.json']: JSON.stringify(summary, null, 2),
+    stdout: `\nDriveAI load test: ${JSON.stringify(summary.metrics)}\n`,
   }
 }

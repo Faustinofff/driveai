@@ -5,11 +5,14 @@ import { expect, test, type Page, type TestInfo } from '@playwright/test'
  * HU-UX — Accesibilidad (criterio Eje A: WCAG 2.2 AA sin violaciones críticas).
  *
  * axe-core analiza el DOM renderizado con las reglas WCAG 2.0/2.1/2.2 A y AA.
- * El test falla ante cualquier violación de impacto "critical". Las "serious"
- * se adjuntan al reporte de Playwright para registrarlas como defecto y
- * corregirlas, sin cortar el pipeline.
+ * El test falla ante cualquier violación de impacto "critical" o "serious".
+ * Se conserva el reporte completo como evidencia y se prueba movimiento reducido.
  */
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
+
+test.beforeEach(async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+})
 
 const VIEWPORTS = [
   { width: 360, height: 800, label: '360px' },
@@ -33,13 +36,23 @@ async function analyze(page: Page, testInfo: TestInfo, name: string) {
   }
 
   const critical = results.violations
-    .filter((v) => v.impact === 'critical')
+    .filter((v) => v.impact === 'critical' || v.impact === 'serious')
     .map((v) => `${v.id}: ${v.help} → ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)
 
-  expect(critical, `Violaciones críticas de accesibilidad en ${name}`).toEqual([])
+  expect(critical, `Violaciones críticas o serias de accesibilidad en ${name}`).toEqual([])
 }
 
 test.describe('HU-UX — Accesibilidad WCAG 2.2 AA (axe)', () => {
+  test('catalogo y detalle conservan contraste en tema oscuro', async ({ page }, testInfo) => {
+    await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' })
+    await page.goto('/#/catalog')
+    await expect(page.locator('html')).toHaveClass(/dark/)
+    await expect(page.getByRole('button', { name: /Ver detalle de / }).first()).toBeVisible()
+    await analyze(page, testInfo, 'catalogo-oscuro')
+    await page.getByRole('button', { name: /Ver detalle de / }).first().click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await analyze(page, testInfo, 'detalle-oscuro')
+  })
   for (const viewport of VIEWPORTS) {
     test(`home sin violaciones críticas a ${viewport.label}`, async ({ page }, testInfo) => {
       await page.setViewportSize(viewport)

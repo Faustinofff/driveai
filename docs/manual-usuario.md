@@ -44,7 +44,7 @@ GROQ_API_KEY=
 
 ```bash
 # 2) Levantar todo
-docker compose up -d --build
+docker compose up -d --build --wait
 
 # 3) Verificar
 docker compose ps
@@ -83,7 +83,7 @@ mvn spring-boot:run
 
 # 3) Frontend (otra terminal)
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -186,6 +186,40 @@ cambiar de cuenta.
 ### 5.8 Tema claro/oscuro
 
 El botón de sol/luna alterna el tema. La preferencia se conserva en el navegador.
+
+### 5.9 Cancelación y estados (API)
+
+La interfaz confirma la compra, pero no incluye una pantalla de historial/cancelación.
+Para demostrar esa parte se usa Swagger o el smoke reproducible:
+
+- `GET /api/orders`: órdenes del usuario identificado por su JWT.
+- `POST /api/orders/{id}/cancel`: cancela una orden propia y devuelve stock una sola vez.
+- Repetir la cancelación devuelve `409`; una orden cancelada no vuelve a `CONFIRMED`.
+- Otro usuario recibe `404` al consultar una orden ajena.
+
+El rol ADMIN puede gestionar cambios de estado mediante el endpoint correspondiente;
+eso no implica que exista un panel gráfico de órdenes ni acceso indiscriminado a su detalle.
+
+### 5.10 Verificación técnica y preparación de la demo
+
+Con los servicios arriba y las credenciales admin definidas en el entorno:
+
+```bash
+python ci/verify-partial2.py --frontend --messaging --report work/manual-smoke.json
+```
+
+El comando crea datos de demo y verifica catálogo, JWT, permisos, compra, reintento,
+cancelación, stock y consumo de eventos. Ejecutarlo en una base de demostración.
+Los escenarios Playwright `catalog.spec.ts`, `auth.spec.ts`, `admin-access.spec.ts`
+y `cart-checkout.spec.ts` contrastan las instrucciones de interfaz; este último
+incluye detalle, aumentar/disminuir cantidad y eliminar una línea.
+
+El backend acepta el checkout con los precios vigentes del catálogo. El snapshot
+de una orden ya creada no cambia al editar precios posteriormente.
+
+Para la defensa, el equipo debe ensayar ese recorrido con sus credenciales y
+explicar las decisiones. La verificación automática no constituye una evaluación
+de comprensión del equipo ni una prueba de aceptación realizada por personas.
 
 ---
 

@@ -90,7 +90,7 @@ export function CatalogPage({ q, onRequireLogin, onClearSearch }: CatalogPagePro
         <h1 className="text-2xl font-extrabold tracking-tight">
           Catálogo de autos certificados
         </h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {query.data
             ? `${query.data.totalElements} vehículos disponibles en stock`
             : 'Explora nuestras unidades disponibles'}

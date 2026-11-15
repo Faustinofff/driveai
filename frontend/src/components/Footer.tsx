@@ -43,7 +43,7 @@ export function Footer({ onNavigate }: FooterProps) {
                 <Car className="h-5 w-5" />
               </span>
               <span className="text-lg">
-                Drive<span className="text-brand-600">AI</span>
+                Drive<span className="text-brand-600 dark:text-brand-300">AI</span>
               </span>
             </a>
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-slate-500 dark:text-slate-400">
@@ -133,7 +133,7 @@ export function Footer({ onNavigate }: FooterProps) {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-6 text-center text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500 sm:flex-row sm:text-left">
+        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-6 text-center text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400 sm:flex-row sm:text-left">
           <span>© 2026 DriveAI. Todos los derechos reservados.</span>
           <span className="flex items-center gap-1.5">
             Hecho con
