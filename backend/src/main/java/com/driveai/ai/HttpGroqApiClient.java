@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -41,14 +42,19 @@ public class HttpGroqApiClient implements GroqApiClient {
 
     @Override
     public String chatCompletion(String systemPrompt, String userPrompt) {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> body = new LinkedHashMap<>(Map.of(
                 "model", properties.model(),
                 "temperature", properties.temperature(),
-                "max_tokens", properties.maxTokens(),
+                "max_completion_tokens", properties.maxTokens(),
                 "response_format", Map.of("type", "json_object"),
                 "messages", List.of(
                         Map.of("role", "system", "content", systemPrompt),
-                        Map.of("role", "user", "content", userPrompt)));
+                        Map.of("role", "user", "content", userPrompt))));
+        // GPT-OSS separa razonamiento y contenido. Solo necesitamos el JSON final.
+        if (properties.model().startsWith("openai/gpt-oss-")) {
+            body.put("reasoning_effort", "low");
+            body.put("include_reasoning", false);
+        }
 
         String raw;
         try {
@@ -76,6 +82,10 @@ public class HttpGroqApiClient implements GroqApiClient {
         if (status == 401 || status == 403) {
             return new GroqApiException(
                     "No se pudo autenticar con el servicio de IA. Verifica que GROQ_API_KEY esté configurada correctamente.", ex);
+        }
+        if (status == 400 || status == 404 || status == 422) {
+            return new GroqApiException(
+                    "La configuración del modelo de IA no es válida. Revisa GROQ_MODEL y los parámetros de la solicitud.", ex);
         }
         return new GroqApiException("El servicio de IA no está disponible por el momento.", ex);
     }

@@ -6,13 +6,17 @@ import os
 from pathlib import Path
 import sys
 import urllib.request
+import urllib.error
 import uuid
+from groq_diagnostics import check_provider, safe_http_error
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://localhost:5173")
     parser.add_argument("--report", default="work/live-ai.json")
+    parser.add_argument("--check-provider", action="store_true",
+                        help="Verificar autenticacion y disponibilidad del modelo antes de desplegar")
     args = parser.parse_args()
     base = args.base_url.rstrip("/")
     report = {"sourceSha": os.getenv("SOURCE_SHA"),
@@ -20,13 +24,31 @@ def main():
               "provider": "backend configurado con Groq real", "cases": [], "status": "failed",
               "limit": "Bateria acotada; no demuestra ausencia universal de prompt injection."}
 
+    def finish():
+        target = Path(args.report)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(json.dumps(report, indent=2, ensure_ascii=False))
+        return 0 if report["status"] == "passed" else 1
+
+    if args.check_provider:
+        try:
+            report["providerCheck"] = check_provider()
+            report["status"] = "passed"
+        except Exception as error:
+            report["error"] = str(error)
+        return finish()
+
     def call(path, body=None, token=None):
         headers = {"Content-Type": "application/json"}
         if token:
             headers["Authorization"] = "Bearer " + token
         req = urllib.request.Request(base + path, None if body is None else json.dumps(body).encode(), headers)
-        with urllib.request.urlopen(req, timeout=30) as response:
-            return json.load(response)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as error:
+            raise RuntimeError(safe_http_error(error, backend=True)) from None
 
     try:
         inventory = {}
@@ -70,11 +92,7 @@ def main():
     except Exception as error:
         # No guardar prompts del sistema, respuestas crudas, JWT ni claves en artifacts.
         report["error"] = str(error)
-    target = Path(args.report)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(json.dumps(report, indent=2, ensure_ascii=False))
-    return 0 if report["status"] == "passed" else 1
+    return finish()
 
 
 if __name__ == "__main__":
