@@ -37,7 +37,8 @@ def check_provider():
     if not model or model == key or model.startswith("gsk_"):
         raise RuntimeError("GROQ_MODEL no contiene un identificador de modelo valido")
     req = urllib.request.Request("https://api.groq.com/openai/v1/models",
-                                 headers={"Authorization": "Bearer " + key})
+                                 headers={"Authorization": "Bearer " + key,
+                                          "User-Agent": "DriveAI-Groq/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=15) as response:
             data = json.load(response)
