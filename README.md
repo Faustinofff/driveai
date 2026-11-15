@@ -35,6 +35,8 @@ TP Obligatorio (UADE).
 - Máquina de estados de órdenes (`PENDING → CONFIRMED → CANCELLED`) con `409` ante
   transiciones inválidas y restauración de stock al cancelar.
 - Panel de administración en el frontend: alta/edición/borrado de autos.
+- **Mis pedidos** en el frontend (`#/orders`): historial del usuario con estado y
+  cancelación con confirmación inline (devuelve stock; el botón desaparece al cancelar).
 - Asesor de compra IA que solo recomienda autos reales en stock (filtra IDs alucinados).
 - Rate limit de login (anti fuerza bruta) y de recomendaciones IA (`429` + `Retry-After`).
 - Errores uniformes **RFC 9457 / RFC 7807** (`application/problem+json`) para

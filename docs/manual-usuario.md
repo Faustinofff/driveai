@@ -135,16 +135,25 @@ Errores frecuentes:
 2. Usar el buscador de la barra o los filtros laterales: marca, precio mínimo/máximo,
    año, combustible y carrocería.
 3. **Limpiar filtros** restablece filtros y búsqueda.
-4. Hacer clic en la imagen o en el nombre de un auto para abrir el **detalle**.
+4. Hacer clic en la imagen o en el nombre de un auto para abrir el **detalle**. Escribir en
+   el buscador desde el inicio también lleva al catálogo con ese texto aplicado.
 5. En el detalle se ven precio, stock, año, kilometraje, consumo, transmisión y
-   descripción. Cerrar con la **X**, con **Volver al catálogo** o con **Escape**.
+   descripción. Cerrar con la **X**, con **Volver al catálogo** o con **Escape**. Mientras
+   está abierto, la página de fondo no se desplaza.
+6. Si la imagen de un auto no está disponible se muestra un reemplazo («Imagen no
+   disponible») en lugar de la foto.
+7. La vista actual queda en la URL (`#/catalog`, `#/orders`, etc.): recargar o usar
+   **Atrás** del navegador conserva la pantalla.
 
 ### 5.4 Carrito
 
 1. En una tarjeta o en el detalle, pulsar **Agregar al carrito**.
 2. Abrir el carrito con el ícono del carrito.
-3. Ajustar cantidades con **+ / −** o eliminar una línea.
-4. El subtotal se actualiza automáticamente.
+3. Ajustar cantidades con **+ / −** o eliminar una línea. El botón **+** se desactiva al
+   llegar al stock disponible y la tarjeta avisa «Máximo en carrito» si se intenta agregar
+   más.
+4. El subtotal se actualiza automáticamente. **Vaciar carrito** elimina todas las líneas.
+5. Al **cerrar sesión** el carrito se vacía: no se hereda entre cuentas en el mismo equipo.
 
 > Para comprar es necesario iniciar sesión. Si no hay sesión, la app redirige al login
 > con el aviso "Inicia sesión para comprar en DriveAI.".
@@ -155,7 +164,7 @@ Errores frecuentes:
 2. La orden se crea de forma transaccional, se descuenta el stock y se envía un evento al
    broker (outbox).
 3. Se muestra **¡Pedido confirmado!** con el número de orden y el estado `CONFIRMED`.
-4. **Seguir comprando** cierra el mensaje.
+4. **Seguir comprando** cierra el mensaje; **Ver mis pedidos** abre el historial (5.9).
 
 Si el stock cambió entre la carga del catálogo y el checkout, la operación se rechaza con
 un mensaje claro y no se crea la orden.
@@ -187,18 +196,26 @@ cambiar de cuenta.
 
 El botón de sol/luna alterna el tema. La preferencia se conserva en el navegador.
 
-### 5.9 Cancelación y estados (API)
+### 5.9 Mis pedidos y cancelación
 
-La interfaz confirma la compra, pero no incluye una pantalla de historial/cancelación.
-Para demostrar esa parte se usa Swagger o el smoke reproducible:
+1. Con sesión iniciada, ir a **Pedidos** en la barra superior (o pulsar el nombre de
+   usuario), o usar **Ver mis pedidos** en el mensaje de confirmación de compra
+   (`#/orders`).
+2. Cada orden muestra número, fecha, estado (**Confirmada** / **Cancelada**), las unidades
+   compradas con su precio y el total.
+3. **Cancelar pedido** pide confirmación en la misma tarjeta (**Sí, cancelar** /
+   **Mantener**). Al confirmar, la orden pasa a **Cancelada** y el stock vuelve al catálogo.
+4. Una orden cancelada ya no ofrece el botón de cancelar: la API responde `409` si se
+   intenta repetir la transición.
+
+La misma funcionalidad está disponible por API para el smoke reproducible:
 
 - `GET /api/orders`: órdenes del usuario identificado por su JWT.
 - `POST /api/orders/{id}/cancel`: cancela una orden propia y devuelve stock una sola vez.
-- Repetir la cancelación devuelve `409`; una orden cancelada no vuelve a `CONFIRMED`.
 - Otro usuario recibe `404` al consultar una orden ajena.
 
 El rol ADMIN puede gestionar cambios de estado mediante el endpoint correspondiente;
-eso no implica que exista un panel gráfico de órdenes ni acceso indiscriminado a su detalle.
+eso no implica un panel gráfico de órdenes ajenas ni acceso indiscriminado a su detalle.
 
 ### 5.10 Verificación técnica y preparación de la demo
 
