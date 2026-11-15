@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -41,14 +42,31 @@ public class HttpGroqApiClient implements GroqApiClient {
 
     @Override
     public String chatCompletion(String systemPrompt, String userPrompt) {
-        Map<String, Object> body = Map.of(
+        Map<String, Object> body = new LinkedHashMap<>(Map.of(
                 "model", properties.model(),
                 "temperature", properties.temperature(),
-                "max_tokens", properties.maxTokens(),
+                "max_completion_tokens", properties.maxTokens(),
                 "response_format", Map.of("type", "json_object"),
                 "messages", List.of(
                         Map.of("role", "system", "content", systemPrompt),
-                        Map.of("role", "user", "content", userPrompt)));
+                        Map.of("role", "user", "content", userPrompt))));
+        // GPT-OSS separa razonamiento y contenido. Solo necesitamos el JSON final.
+        if (properties.model().startsWith("openai/gpt-oss-")) {
+            body.put("reasoning_effort", "low");
+            body.put("include_reasoning", false);
+            body.put("response_format", Map.of(
+                    "type", "json_schema",
+                    "json_schema", Map.of(
+                            "name", "driveai_recommendation", "strict", true,
+                            "schema", Map.of(
+                                    "type", "object",
+                                    "properties", Map.of(
+                                            "reasoning", Map.of("type", "string"),
+                                            "recommendedCarIds", Map.of("type", "array",
+                                                    "items", Map.of("type", "integer"))),
+                                    "required", List.of("reasoning", "recommendedCarIds"),
+                                    "additionalProperties", false))));
+        }
 
         String raw;
         try {
@@ -69,6 +87,10 @@ public class HttpGroqApiClient implements GroqApiClient {
 
     private GroqApiException mapHttpError(RestClientResponseException ex) {
         int status = ex.getStatusCode().value();
+        if (status == 400 && invalidStructuredOutput(ex)) {
+            return new GroqApiException(
+                    "El modelo de IA no pudo generar el formato requerido. Inténtalo de nuevo.", ex);
+        }
         if (status == 429) {
             return new GroqApiException(
                     "El servicio de IA está saturado en este momento. Inténtalo de nuevo en unos segundos.", ex);
@@ -77,7 +99,22 @@ public class HttpGroqApiClient implements GroqApiClient {
             return new GroqApiException(
                     "No se pudo autenticar con el servicio de IA. Verifica que GROQ_API_KEY esté configurada correctamente.", ex);
         }
+        if (status == 400 || status == 404 || status == 422) {
+            return new GroqApiException(
+                    "La configuración del modelo de IA no es válida. Revisa GROQ_MODEL y los parámetros de la solicitud.", ex);
+        }
         return new GroqApiException("El servicio de IA no está disponible por el momento.", ex);
+    }
+
+    private boolean invalidStructuredOutput(RestClientResponseException ex) {
+        try {
+            JsonNode root = objectMapper.readTree(ex.getResponseBodyAsString());
+            if (root == null) return false;
+            String code = root.path("error").path("code").asText();
+            return "json_validate_failed".equals(code) || "json_schema_validation_failed".equals(code);
+        } catch (JsonProcessingException ignored) {
+            return false;
+        }
     }
 
     private String extractContent(String rawResponse) {

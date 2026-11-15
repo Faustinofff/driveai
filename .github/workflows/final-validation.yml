@@ -26,6 +26,7 @@ jobs:
       ADMIN_EMAIL: final-qa@driveai.test
       SPRING_PROFILES_ACTIVE: prod
       GROQ_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.live_ai && secrets.GROQ_API_KEY || '' }}
+      GROQ_MODEL: ${{ vars.GROQ_MODEL || 'openai/gpt-oss-120b' }}
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +47,13 @@ jobs:
             echo "::error::Fausti debe configurar GROQ_API_KEY en los secrets del repositorio."
             exit 1
           fi
+
+      - name: Probar diagnosticos sin exponer secretos
+        run: python3 -m unittest discover -s ci -p 'test_groq_diagnostics.py'
+
+      - name: Verificar clave y modelo de Groq antes de desplegar
+        if: github.event_name == 'workflow_dispatch' && inputs.live_ai
+        run: python3 ci/verify-live-ai.py --check-provider --report work/groq-provider.json
 
       - name: Desplegar imagenes reales
         id: deploy
