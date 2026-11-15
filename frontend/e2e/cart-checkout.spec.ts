@@ -72,6 +72,20 @@ test.describe('HU-CART — Carrito y checkout', () => {
     await expect(page.getByRole('heading', { name: '¡Pedido confirmado!' })).toBeHidden()
   })
 
+  test('cerrar sesión vacía el carrito del navegador', async ({ page, request }) => {
+    // Regresión: el carrito persiste en localStorage y otra persona que
+    // ingresara en el mismo equipo heredaba las líneas de la sesión anterior.
+    const session = await registerCustomer(request, 'cart-logout')
+    await seedSession(page, session)
+    await page.goto('/#/catalog')
+    await page.getByRole('button', { name: 'Agregar al carrito' }).first().click()
+    await expect(page.getByRole('button', { name: 'Abrir carrito' })).toContainText('1')
+
+    await page.getByRole('button', { name: 'Cerrar sesión' }).first().click()
+    await expect(page.getByRole('button', { name: 'Ingresar' }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Abrir carrito' })).not.toContainText('1')
+  })
+
   test('el checkout exige autenticación: usuario anónimo es enviado al login', async ({ page }) => {
     await page.goto('/#/catalog')
     await page.getByRole('button', { name: 'Agregar al carrito' }).first().click()

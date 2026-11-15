@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Car,
+  ClipboardList,
   Home,
   LayoutDashboard,
   LogIn,
@@ -54,6 +55,14 @@ export function Navbar({
       onLoginRequested('ai', 'Inicia sesión para consultar al asesor de IA.')
     }
   }
+  const openOrders = () => {
+    setMenuOpen(false)
+    if (isAuthenticated) {
+      onViewChange('orders')
+    } else {
+      onLoginRequested('orders', 'Inicia sesión para ver tus pedidos.')
+    }
+  }
   const openCart = () => {
     setMenuOpen(false)
     if (isAuthenticated) {
@@ -70,6 +79,8 @@ export function Navbar({
 
   const initial = user?.fullName.trim().charAt(0).toUpperCase() ?? '?'
   const showSearch = view === 'catalog' || view === 'home'
+  const searchInputClass =
+    'w-full rounded-full border border-slate-300 bg-white py-2 pl-9 pr-4 text-sm shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500'
 
   const navLinkClass = (active: boolean) =>
     `inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition ${
@@ -115,11 +126,21 @@ export function Navbar({
           <button
             type="button"
             onClick={openAi}
-            className={navLinkClass(false)}
+            className={navLinkClass(view === 'ai')}
           >
             <Sparkles className="h-4 w-4" />
             IA
           </button>
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={openOrders}
+              className={navLinkClass(view === 'orders')}
+            >
+              <ClipboardList className="h-4 w-4" />
+              Pedidos
+            </button>
+          )}
           {isAuthenticated && isAdmin && (
             <button
               type="button"
@@ -141,7 +162,8 @@ export function Navbar({
                 value={searchValue}
                 onChange={(event) => onSearchChange(event.target.value)}
                 placeholder="Buscar marca, modelo…"
-                className="w-full rounded-full border border-slate-300 bg-white py-2 pl-9 pr-4 text-sm shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+                aria-label="Buscar en el catálogo"
+                className={searchInputClass}
               />
             </div>
           ) : (
@@ -174,12 +196,20 @@ export function Navbar({
           {isAuthenticated ? (
             <>
               <div className="hidden h-9 items-center gap-1 rounded-full border border-slate-200 bg-slate-100 pl-1.5 pr-1 dark:border-slate-800 dark:bg-slate-900 sm:flex">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">
-                  {initial}
-                </span>
-                <span className="hidden max-w-24 truncate text-sm font-semibold text-slate-700 dark:text-slate-200 lg:block">
-                  {user?.fullName.split(' ')[0]}
-                </span>
+                <button
+                  type="button"
+                  onClick={openOrders}
+                  className="flex items-center gap-1.5 rounded-full pr-1 transition hover:text-brand-700 dark:hover:text-brand-300"
+                  title="Mis pedidos"
+                  aria-label="Mis pedidos"
+                >
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">
+                    {initial}
+                  </span>
+                  <span className="hidden max-w-24 truncate text-sm font-semibold text-slate-700 dark:text-slate-200 lg:block">
+                    {user?.fullName.split(' ')[0]}
+                  </span>
+                </button>
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -234,7 +264,8 @@ export function Navbar({
               value={searchValue}
               onChange={(event) => onSearchChange(event.target.value)}
               placeholder="Buscar marca, modelo…"
-              className="w-full rounded-full border border-slate-300 bg-white py-2 pl-9 pr-4 text-sm shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+              aria-label="Buscar en el catálogo"
+              className={searchInputClass}
             />
           </div>
         </div>
@@ -267,6 +298,16 @@ export function Navbar({
               <Sparkles className="h-4 w-4 text-brand-600 dark:text-brand-400" />
               Asesor IA
             </button>
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={openOrders}
+                className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900"
+              >
+                <ClipboardList className="h-4 w-4 text-brand-600 dark:text-brand-400" />
+                Mis pedidos
+              </button>
+            )}
             {isAuthenticated && isAdmin && (
               <button
                 type="button"

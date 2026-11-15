@@ -6,6 +6,7 @@ import {
   setAuthToken,
 } from '../services/api'
 import type { AuthResponse, User } from '../types'
+import { useCartStore } from './cartStore'
 
 interface AuthStoreState {
   token: string | null
@@ -38,6 +39,9 @@ export const useAuthStore = create<AuthStoreState>()(
       logout: () => {
         setAuthToken(null)
         set({ token: null, user: null })
+        // El carrito vive en el navegador: al cerrar sesión se vacía para que
+        // otra persona que ingrese en el mismo equipo no herede las líneas.
+        useCartStore.getState().clear()
       },
     }),
     { name: 'driveai-auth' },

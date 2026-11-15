@@ -123,7 +123,9 @@ export function HomePage({ onNavigate, onRequireLogin, onSelectCategory }: HomeP
           <div className="mt-8 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {featured.isPending &&
               Array.from({ length: 6 }, (_, index) => <CarCardSkeleton key={index} />)}
-            {featured.data?.content.map((car, index) => (
+            {featured.data?.content
+              .filter((car) => car.stock > 0)
+              .map((car, index) => (
               <Reveal key={car.id} delay={index * 60}>
                 <CarCard car={car} onRequireLogin={onRequireLogin} />
               </Reveal>
