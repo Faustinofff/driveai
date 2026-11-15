@@ -35,7 +35,40 @@ jobs:
       - name: Probar diagnosticos
         run: python3 -m unittest discover -s ci -p 'test_groq_diagnostics.py'
       - name: Verificar clave y modelo en Groq
+        continue-on-error: true
         run: python3 ci/verify-live-ai.py --check-provider --report work/groq-provider.json
+      - name: Contrastar cliente HTTP sin exponer respuesta
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error
+          request = urllib.request.Request("https://api.groq.com/openai/v1/models",
+              headers={"Authorization": "Bearer " + os.environ["GROQ_API_KEY"],
+                       "User-Agent": "DriveAI-Groq/1.0"})
+          result = {"client": "DriveAI-Groq/1.0"}
+          try:
+              with urllib.request.urlopen(request, timeout=15) as response:
+                  result["httpStatus"] = response.status
+                  data = json.load(response)
+                  result["selectedModelAvailable"] = any(
+                      x.get("id") == os.environ["GROQ_MODEL"] for x in data.get("data", []))
+          except urllib.error.HTTPError as error:
+              result["httpStatus"] = error.code
+              body = error.read(16384).decode("utf-8", "replace")
+              result["edgeClientPolicy"] = "1010" in body and "error" in body.lower()
+              try:
+                  code = json.loads(body).get("error", {}).get("code")
+                  safe = {"invalid_api_key", "model_decommissioned", "model_not_found",
+                          "insufficient_permissions", "permission_denied", "access_denied",
+                          "rate_limit_exceeded", "insufficient_quota", "unsupported_country"}
+                  result["providerCode"] = code if isinstance(code, str) and code in safe else "unclassified"
+              except (ValueError, AttributeError):
+                  result["providerCode"] = "non-json-response"
+          except (urllib.error.URLError, TimeoutError):
+              result["connection"] = "failed"
+          with open("work/groq-client-probe.json", "w") as output:
+              json.dump(result, output, indent=2)
+          print(json.dumps(result, indent=2))
+          PY
       - name: Desplegar la aplicacion del PR 5
         id: deploy
         run: docker compose up -d --build --wait --wait-timeout 240
