@@ -7,10 +7,13 @@ export interface CartLine {
   quantity: number
 }
 
+/** Resultado de agregar: `limit` si la línea ya está al máximo del stock. */
+export type AddResult = 'added' | 'limit'
+
 interface CartStoreState {
   sessionId: string
   lines: CartLine[]
-  add: (car: Car) => void
+  add: (car: Car) => AddResult
   increment: (carId: number) => void
   decrement: (carId: number) => void
   setQuantity: (carId: number, quantity: number) => void
@@ -37,15 +40,26 @@ export const useCartStore = create<CartStoreState>()(
         const current = get().lines
         const existing = current.find((line) => line.car.id === car.id)
         if (existing) {
-          const nextQty = Math.min(existing.quantity + DEFAULT_QUANTITY, existing.car.stock)
+          // Se refresca la ficha del auto (precio/stock pueden haber cambiado
+          // desde que se guardó la línea) y se respeta el tope de stock.
+          if (existing.quantity >= car.stock) {
+            set({
+              lines: current.map((line) =>
+                line.car.id === car.id ? { ...line, car, quantity: Math.min(line.quantity, car.stock) } : line,
+              ),
+            })
+            return 'limit'
+          }
+          const nextQty = Math.min(existing.quantity + DEFAULT_QUANTITY, car.stock)
           set({
             lines: current.map((line) =>
-              line.car.id === car.id ? { ...line, quantity: nextQty } : line,
+              line.car.id === car.id ? { ...line, car, quantity: nextQty } : line,
             ),
           })
-        } else {
-          set({ lines: [...current, { car, quantity: DEFAULT_QUANTITY }] })
+          return 'added'
         }
+        set({ lines: [...current, { car, quantity: DEFAULT_QUANTITY }] })
+        return 'added'
       },
 
       increment: (carId) => {

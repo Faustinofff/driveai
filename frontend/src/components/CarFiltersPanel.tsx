@@ -73,14 +73,14 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
     filters.minYear !== undefined || filters.fuelType || filters.bodyType
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-bold tracking-wide text-slate-700">Filtros</h2>
+        <h2 className="text-sm font-bold tracking-wide text-slate-700 dark:text-slate-200">Filtros</h2>
         {hasActiveFilters && (
           <button
             type="button"
             onClick={clearAll}
-            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-brand-700"
+            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-brand-700 dark:text-slate-400 dark:hover:text-brand-300"
           >
             <FilterX className="h-3.5 w-3.5" />
             Limpiar
@@ -90,7 +90,7 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
 
       <div className="space-y-3">
         <div>
-          <label htmlFor={`${uid}-brand`} className="mb-1 block text-xs font-medium text-slate-500">Marca</label>
+          <label htmlFor={`${uid}-brand`} className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Marca</label>
           <input
             id={`${uid}-brand`}
             type="text"
@@ -103,7 +103,7 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label htmlFor={`${uid}-min-price`} className="mb-1 block text-xs font-medium text-slate-500">Precio min.</label>
+            <label htmlFor={`${uid}-min-price`} className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Precio min.</label>
             <input
               id={`${uid}-min-price`}
               type="number"
@@ -116,7 +116,7 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
             />
           </div>
           <div>
-            <label htmlFor={`${uid}-max-price`} className="mb-1 block text-xs font-medium text-slate-500">Precio máx.</label>
+            <label htmlFor={`${uid}-max-price`} className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Precio máx.</label>
             <input
               id={`${uid}-max-price`}
               type="number"
@@ -131,7 +131,7 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
         </div>
 
         <div>
-          <label htmlFor={`${uid}-min-year`} className="mb-1 block text-xs font-medium text-slate-500">Año mínimo</label>
+          <label htmlFor={`${uid}-min-year`} className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Año mínimo</label>
           <input
             id={`${uid}-min-year`}
             type="number"
@@ -146,7 +146,7 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
         </div>
 
         <div>
-          <label htmlFor={`${uid}-fuel`} className="mb-1 block text-xs font-medium text-slate-500">Combustible</label>
+          <label htmlFor={`${uid}-fuel`} className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Combustible</label>
           <select
             id={`${uid}-fuel`}
             value={draft.fuelType}
@@ -162,7 +162,7 @@ export function CarFiltersPanel({ filters, onChange, onClear }: CarFiltersProps)
         </div>
 
         <div>
-          <label htmlFor={`${uid}-body`} className="mb-1 block text-xs font-medium text-slate-500">Carrocería</label>
+          <label htmlFor={`${uid}-body`} className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Carrocería</label>
           <select
             id={`${uid}-body`}
             value={draft.bodyType}

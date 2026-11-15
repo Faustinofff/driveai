@@ -21,3 +21,14 @@ export function formatMileage(value: number): string {
 export function formatConsumption(value: number): string {
   return `${value} L/100km`
 }
+
+const dateFormatter = new Intl.DateTimeFormat('es-AR', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+})
+
+export function formatDate(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return iso
+  return dateFormatter.format(date)
+}

@@ -26,7 +26,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
         type="button"
         disabled={page === 0}
         onClick={() => onPageChange(page - 1)}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-brand-300"
         aria-label="Página anterior"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -41,7 +41,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
           className={`inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-semibold transition ${
             number === page
               ? 'bg-brand-600 text-white shadow-md shadow-brand-600/20'
-              : 'border border-slate-300 bg-white text-slate-600 hover:border-brand-400 hover:text-brand-700'
+              : 'border border-slate-300 bg-white text-slate-600 hover:border-brand-400 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-brand-300'
           }`}
         >
           {number + 1}
@@ -52,7 +52,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
         type="button"
         disabled={page >= totalPages - 1}
         onClick={() => onPageChange(page + 1)}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition hover:border-brand-400 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-brand-300"
         aria-label="Página siguiente"
       >
         <ChevronRight className="h-4 w-4" />

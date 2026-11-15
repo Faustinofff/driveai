@@ -5,6 +5,8 @@ import { CarFiltersPanel } from '../components/CarFiltersPanel'
 import { Pagination } from '../components/Pagination'
 import { useCars } from '../hooks/useCars'
 import type { CarFilters } from '../types'
+import { formatNumber } from '../utils/formatters'
+import { BTN_PRIMARY, PANEL } from '../utils/styles'
 
 interface CatalogPageProps {
   q: string
@@ -66,6 +68,13 @@ export function CatalogPage({ q, onRequireLogin, onClearSearch }: CatalogPagePro
     )
   }, [filters])
 
+  // Al cambiar de página se vuelve arriba: si no, el usuario quedaba mirando
+  // el pie del listado anterior sin notar que ya cargó la página nueva.
+  const changePage = (next: number) => {
+    setPage(next)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const updateFilters = (next: CarFilters) => {
     setFilters(next)
     setPage(0)
@@ -81,8 +90,18 @@ export function CatalogPage({ q, onRequireLogin, onClearSearch }: CatalogPagePro
 
   const query = useCars({ ...filters, q }, page)
   const isLoading = query.isPending
+  const isRefreshing = query.isFetching && !query.isPending
   const isError = query.isError && query.data === undefined
   const isEmpty = query.isSuccess && query.data.content.length === 0
+  const hasSearch = Boolean(q.trim())
+
+  const summary = (() => {
+    if (!query.data) return 'Explora nuestras unidades disponibles'
+    const total = query.data.totalElements
+    const noun = total === 1 ? 'vehículo' : 'vehículos'
+    const scope = hasSearch ? ` para «${q.trim()}»` : ''
+    return `${formatNumber(total)} ${noun} ${total === 1 ? 'encontrado' : 'encontrados'}${scope}`
+  })()
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
@@ -90,10 +109,8 @@ export function CatalogPage({ q, onRequireLogin, onClearSearch }: CatalogPagePro
         <h1 className="text-2xl font-extrabold tracking-tight">
           Catálogo de autos certificados
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {query.data
-            ? `${query.data.totalElements} vehículos disponibles en stock`
-            : 'Explora nuestras unidades disponibles'}
+        <p className="text-sm text-slate-500 dark:text-slate-400" aria-live="polite">
+          {summary}
         </p>
       </div>
 
@@ -102,7 +119,7 @@ export function CatalogPage({ q, onRequireLogin, onClearSearch }: CatalogPagePro
           <CarFiltersPanel filters={filters} onChange={updateFilters} onClear={clearFilters} />
         </aside>
 
-        <section className="flex-1">
+        <section className="flex-1" aria-busy={isLoading || isRefreshing}>
           {isLoading && (
             <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: SKELETON_COUNT }, (_, index) => (
@@ -112,10 +129,12 @@ export function CatalogPage({ q, onRequireLogin, onClearSearch }: CatalogPagePro
           )}
 
           {isError && (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-6 py-16 text-center">
-              <AlertCircle className="h-10 w-10 text-rose-500" />
-              <p className="mt-3 font-semibold text-rose-700">No se pudo cargar el catálogo</p>
-              <p className="mt-1 text-sm text-rose-500">
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-6 py-16 text-center dark:border-rose-500/40 dark:bg-rose-500/10">
+              <AlertCircle className="h-10 w-10 text-rose-500 dark:text-rose-400" />
+              <p className="mt-3 font-semibold text-rose-700 dark:text-rose-300">
+                No se pudo cargar el catálogo
+              </p>
+              <p className="mt-1 text-sm text-rose-500 dark:text-rose-300/80">
                 Verifica que el backend esté disponible e intenta de nuevo.
               </p>
               <button
@@ -130,24 +149,26 @@ export function CatalogPage({ q, onRequireLogin, onClearSearch }: CatalogPagePro
           )}
 
           {isEmpty && (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center">
-              <SearchX className="h-10 w-10 text-slate-400" />
-              <p className="mt-3 font-semibold text-slate-700">Sin resultados</p>
-              <p className="mt-1 max-w-sm text-sm text-slate-500">
-                Ningún auto coincide con los filtros aplicados.
+            <div className={`${PANEL} flex flex-col items-center justify-center px-6 py-16 text-center`}>
+              <SearchX className="h-10 w-10 text-slate-400 dark:text-slate-500" />
+              <p className="mt-3 font-semibold text-slate-700 dark:text-slate-200">Sin resultados</p>
+              <p className="mt-1 max-w-sm text-sm text-slate-500 dark:text-slate-400">
+                {hasSearch
+                  ? `Ningún auto coincide con «${q.trim()}» y los filtros aplicados.`
+                  : 'Ningún auto coincide con los filtros aplicados.'}
               </p>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="mt-5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
-              >
+              <button type="button" onClick={clearFilters} className={`${BTN_PRIMARY} mt-5`}>
                 Limpiar filtros
               </button>
             </div>
           )}
 
           {query.data && !isLoading && !isEmpty && (
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div
+              className={`grid gap-6 transition-opacity sm:grid-cols-2 xl:grid-cols-3 ${
+                isRefreshing ? 'opacity-60' : 'opacity-100'
+              }`}
+            >
               {query.data.content.map((car) => (
                 <CarCard key={car.id} car={car} onRequireLogin={onRequireLogin} />
               ))}
@@ -158,7 +179,7 @@ export function CatalogPage({ q, onRequireLogin, onClearSearch }: CatalogPagePro
             <Pagination
               page={page}
               totalPages={query.data.totalPages}
-              onPageChange={setPage}
+              onPageChange={changePage}
             />
           )}
         </section>
