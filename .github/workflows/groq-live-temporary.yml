@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 15
     env:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      GROQ_MODEL: ${{ vars.GROQ_MODEL || 'openai/gpt-oss-20b' }}
+      GROQ_MODEL: openai/gpt-oss-120b
       SPRING_PROFILES_ACTIVE: prod
       ADMIN_EMAIL: groq-live@driveai.test
       SOURCE_SHA: ${{ github.sha }}
