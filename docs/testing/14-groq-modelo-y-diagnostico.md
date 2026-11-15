@@ -45,3 +45,16 @@ otros problemas de autenticacion, cuota o conectividad.
 
 La correccion preparada y las pruebas con proveedor simulado no se presentan
 como una nueva corrida Groq real. KAN-42/KAN-43 continuan pendientes de esa evidencia.
+
+## Contraste real desde la rama temporal
+
+La ejecucion https://github.com/Faustinofff/driveai/actions/runs/43747131461
+verifico que la clave accede al modelo con el cliente identificado como
+`DriveAI-Groq/1.0`. El chequeo Python sin esa identificacion devolvia 403;
+se agrega el mismo User-Agent al preflight y se verifica en su test.
+
+La app real aprobo cuatro casos (normal, limite, IDs inventados y prompt injection),
+pero el quinto recibio un rechazo de cuota/limite de Groq. Se espacian los casos
+30 segundos por defecto, sin reintentos que oculten errores. El tiempo es
+configurable con `--case-delay-seconds` (0 a 60). Un rechazo persistente sigue
+haciendo fallar la prueba: espaciar consultas no aumenta la cuota de la cuenta.

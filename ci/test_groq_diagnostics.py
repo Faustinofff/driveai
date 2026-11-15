@@ -38,6 +38,7 @@ class GroqDiagnosticsTest(unittest.TestCase):
         request = urlopen.call_args.args[0]
         self.assertEqual(request.full_url, "https://api.groq.com/openai/v1/models")
         self.assertEqual(request.get_header("Authorization"), "Bearer test-private-key")
+        self.assertEqual(request.get_header("User-agent"), "DriveAI-Groq/1.0")
 
     @patch.dict(os.environ, {"GROQ_API_KEY": "test-private-key", "GROQ_MODEL": DEFAULT_MODEL})
     @patch("urllib.request.urlopen")
