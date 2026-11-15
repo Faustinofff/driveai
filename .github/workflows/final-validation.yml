@@ -26,7 +26,7 @@ jobs:
       ADMIN_EMAIL: final-qa@driveai.test
       SPRING_PROFILES_ACTIVE: prod
       GROQ_API_KEY: ${{ github.event_name == 'workflow_dispatch' && inputs.live_ai && secrets.GROQ_API_KEY || '' }}
-      GROQ_MODEL: ${{ vars.GROQ_MODEL || 'openai/gpt-oss-20b' }}
+      GROQ_MODEL: ${{ vars.GROQ_MODEL || 'openai/gpt-oss-120b' }}
       SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4

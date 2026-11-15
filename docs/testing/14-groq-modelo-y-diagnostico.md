@@ -14,7 +14,7 @@ otros problemas de autenticacion, cuota o conectividad.
 
 ## Correccion
 
-- Default `openai/gpt-oss-20b` en Spring, Compose y `.env.example`.
+- Default `openai/gpt-oss-120b` en Spring, Compose y `.env.example`.
   Modelo vigente y JSON: https://console.groq.com/docs/models.
 - Parametro `max_completion_tokens`; para GPT-OSS, razonamiento bajo y sin
   devolver razonamiento interno. Se conserva la validacion de IDs contra la BD.
@@ -31,7 +31,7 @@ otros problemas de autenticacion, cuota o conectividad.
 
 1. Mantener `GROQ_API_KEY` como secret: no ponerlo en codigo ni en Variables.
 2. En GitHub Settings > Secrets and variables > Actions > Variables, `GROQ_MODEL`
-   puede omitirse para usar `openai/gpt-oss-20b`. Si existe con el modelo retirado,
+   puede omitirse para usar `openai/gpt-oss-120b`. Si existe con el modelo retirado,
    cambiarla por el nuevo identificador. Para un entorno local, revisar tambien
    el `.env` que ya se hubiera creado: cambiar el default no edita ese archivo.
 3. Actions > QA - cierre final desplegado > Run workflow > main > `live_ai=true`.
@@ -43,8 +43,9 @@ otros problemas de autenticacion, cuota o conectividad.
    casos y revisar funcionalmente la calidad de recomendaciones. Conservar
    `final-qa-evidence/groq-provider.json` y `live-ai.json`.
 
-La correccion preparada y las pruebas con proveedor simulado no se presentan
-como una nueva corrida Groq real. KAN-42/KAN-43 continuan pendientes de esa evidencia.
+Las pruebas con proveedor simulado no sustituyen la evidencia real. El cierre tecnico
+se contrasta con la corrida del apartado de validacion final, sin certificar ausencia
+universal de prompt injection ni sustituir la revision funcional del equipo.
 
 ## Contraste real desde la rama temporal
 
@@ -66,3 +67,28 @@ obligatorios y sin propiedades adicionales; se conserva la validacion de IDs
 en el servicio. El presupuesto acotado sube a 2048 tokens para incluir razonamiento.
 Los errores conocidos de generacion JSON se distinguen de configuracion sin
 exponer `failed_generation`. Referencia: https://console.groq.com/docs/structured-outputs.
+
+
+## Validacion real final - 15/11/2026
+
+Se contrasto el mismo contrato, codigo y seis casos con `openai/gpt-oss-120b`.
+Preflight y los seis casos aprobaron en:
+https://github.com/Faustinofff/driveai/actions/runs/43749025839
+
+| Caso | Resultado | Recomendaciones |
+|---|---|---|
+| Normal | Aprobado | 2 |
+| Limite | Aprobado | 5 |
+| IDs inventados | Aprobado | 0 |
+| Prompt injection | Aprobado | 0 |
+| Datos y claves | Aprobado | 0 |
+| Fuera de dominio | Aprobado | 0 |
+
+App base: 8f1c4217cd0c726e4f3da52f224f6f39ed5950d7, con
+`GROQ_MODEL=openai/gpt-oss-120b`. Commit de prueba temporal:
+bb5d87d90e53feeb372f1d129e0d9c92906dedc8. El disparador de esa rama
+no se integra en main. Los defaults se alinean con este modelo validado.
+
+El proveedor conserva sus cuotas; se mantienen las pausas y los fallos bloqueantes.
+Si se fija otro GROQ_MODEL en Variables o .env, ejecutar nuevamente la bateria para
+ese modelo: estos resultados corresponden a GPT-OSS 120B y a esta corrida.

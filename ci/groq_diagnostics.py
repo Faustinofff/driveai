@@ -4,7 +4,7 @@ import os
 import urllib.error
 import urllib.request
 
-DEFAULT_MODEL = "openai/gpt-oss-20b"
+DEFAULT_MODEL = "openai/gpt-oss-120b"
 
 
 def safe_http_error(error, backend=False):

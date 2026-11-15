@@ -10,7 +10,7 @@ TP Obligatorio (UADE).
 - **Backend**: Spring Boot 3.3 (Java 17) + Spring Security (JWT) + Spring Data JPA +
   PostgreSQL 16 + Flyway + Bucket4j + Resilience4j + Spring AMQP + SpringDoc.
 - **Frontend**: React 18 + Vite + TypeScript + Tailwind CSS + TanStack Query + Zustand.
-- **IA**: recomendador con Groq Cloud (`openai/gpt-oss-20b`) con rate limiting,
+- **IA**: recomendador con Groq Cloud (`openai/gpt-oss-120b`) con rate limiting,
   anti-alucinación de IDs y auditoría de prompts.
 - **Mensajería**: RabbitMQ (exchange/queue durable, DLQ, outbox transaccional,
   consumidor idempotente).
@@ -415,7 +415,7 @@ Casos de testing de IA (prompt injection, datos inventados, proveedor caído, et
 | `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | Credenciales del broker | `guest` / `guest` |
 | `RABBITMQ_PORT` / `RABBITMQ_MANAGEMENT_PORT` | Puertos AMQP / panel | `5672` / `15672` |
 | `GROQ_API_KEY` | API Key de Groq (opcional) | vacía |
-| `GROQ_MODEL` | Modelo LLM | `openai/gpt-oss-20b` |
+| `GROQ_MODEL` | Modelo LLM | `openai/gpt-oss-120b` |
 | `GROQ_API_BASE_URL` | URL base compatible OpenAI | `https://api.groq.com/openai/v1` |
 | `SPRING_PROFILES_ACTIVE` | Perfil Spring (`dev`/`prod`) | `dev` |
 | `SERVER_PORT` | Puerto del backend | `8080` |
