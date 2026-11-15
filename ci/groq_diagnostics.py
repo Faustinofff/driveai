@@ -23,6 +23,7 @@ def safe_http_error(error, backend=False):
             "El servicio de IA está saturado en este momento. Inténtalo de nuevo en unos segundos.": "cuota o limite de Groq",
             "El servicio de IA no respondió a tiempo. Inténtalo de nuevo en un momento.": "timeout de Groq",
             "El asistente devolvió una respuesta inválida. Inténtalo de nuevo.": "JSON invalido del modelo",
+            "El modelo de IA no pudo generar el formato requerido. Inténtalo de nuevo.": "generacion estructurada rechazada por Groq",
         }
         if isinstance(detail, str):
             category = known.get(detail, category)

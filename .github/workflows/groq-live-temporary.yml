@@ -49,7 +49,7 @@ jobs:
           mkdir -p work
           docker compose ps -a > work/compose-ps.txt
           docker compose logs --no-color backend frontend > work/compose.log
-          echo 'Base de aplicacion: 3fe658c1d70c45ecbb16296507ea78896a7307a2 (PR 5).' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Base de aplicacion: 8f1c4217cd0c726e4f3da52f224f6f39ed5950d7 (PR 5).' >> "$GITHUB_STEP_SUMMARY"
           echo 'Esta rama solo agrega el disparador temporal; no modifica main ni los secretos.' >> "$GITHUB_STEP_SUMMARY"
       - name: Conservar reportes
         if: always()

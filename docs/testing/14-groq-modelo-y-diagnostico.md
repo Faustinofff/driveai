@@ -58,3 +58,11 @@ pero el quinto recibio un rechazo de cuota/limite de Groq. Se espacian los casos
 30 segundos por defecto, sin reintentos que oculten errores. El tiempo es
 configurable con `--case-delay-seconds` (0 a 60). Un rechazo persistente sigue
 haciendo fallar la prueba: espaciar consultas no aumenta la cuota de la cuenta.
+
+La siguiente corrida (43747548451) paso el preflight y los primeros tres casos,
+pero una consulta adversarial recibio un rechazo de modelo/parametros. Se exige
+`json_schema` con `strict: true` para GPT-OSS, con los dos campos del contrato
+obligatorios y sin propiedades adicionales; se conserva la validacion de IDs
+en el servicio. El presupuesto acotado sube a 2048 tokens para incluir razonamiento.
+Los errores conocidos de generacion JSON se distinguen de configuracion sin
+exponer `failed_generation`. Referencia: https://console.groq.com/docs/structured-outputs.
