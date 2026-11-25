@@ -280,7 +280,7 @@ jobs:
 
       # G6: la cátedra escanea TODO el historial. gitleaks-action en un push solo mira
       # los commits nuevos, así que este paso recorre el historial completo y bloquea.
-      # Historial saneado el 10/11/2026 (D-01, docs/testing/14-saneamiento-historial-D01.md).
+      # Historial saneado el 10/11/2026 (D-01, docs/testing/15-saneamiento-historial-D01.md).
       - name: Gitleaks (historial completo, bloqueante)
         run: |
           docker run --rm -v "$PWD:/repo" \

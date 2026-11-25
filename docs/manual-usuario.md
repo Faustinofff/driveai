@@ -34,12 +34,16 @@ POSTGRES_DB=cardb
 POSTGRES_USER=cardb_user
 POSTGRES_PASSWORD=una_clave_segura
 
+RABBITMQ_USER=driveai
+RABBITMQ_PASSWORD=otra_clave_segura
+
 JWT_SECRET=<generado con: openssl rand -base64 48>
 ADMIN_EMAIL=admin@driveai.com
 ADMIN_PASSWORD=<tu_contraseña_de_demo>
 
 # Opcional: sin esta clave el asesor IA responde 503
 GROQ_API_KEY=
+GROQ_MODEL=openai/gpt-oss-120b
 ```
 
 ```bash

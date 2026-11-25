@@ -9,6 +9,10 @@ import time
 import urllib.request
 import urllib.error
 import uuid
+
+# El reporte siempre se escribe dentro de work/: --report solo elige el nombre del
+# archivo. Evita escribir en rutas arbitrarias (SonarCloud: path traversal).
+REPORT_DIR = Path(__file__).resolve().parent.parent / "work"
 from groq_diagnostics import check_provider, safe_http_error
 
 
@@ -30,7 +34,7 @@ def main():
               "limit": "Bateria acotada; no demuestra ausencia universal de prompt injection."}
 
     def finish():
-        target = Path(args.report)
+        target = REPORT_DIR / os.path.basename(args.report)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
         print(json.dumps(report, indent=2, ensure_ascii=False))

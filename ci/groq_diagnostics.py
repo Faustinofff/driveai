@@ -18,8 +18,8 @@ def safe_http_error(error, backend=False):
         except (ValueError, AttributeError):
             detail = ""
         known = {
-            "No se pudo autenticar con el servicio de IA. Verifica que GROQ_API_KEY esté configurada correctamente.": "autenticacion con Groq",
-            "La configuración del modelo de IA no es válida. Revisa GROQ_MODEL y los parámetros de la solicitud.": "modelo o parametros de Groq",
+            "No se pudo autenticar con el servicio de IA. Avisale al administrador para que revise la clave configurada.": "autenticacion con Groq",
+            "La configuración del modelo de IA no es válida. Avisale al administrador para que revise el modelo configurado.": "modelo o parametros de Groq",
             "El servicio de IA está saturado en este momento. Inténtalo de nuevo en unos segundos.": "cuota o limite de Groq",
             "El servicio de IA no respondió a tiempo. Inténtalo de nuevo en un momento.": "timeout de Groq",
             "El asistente devolvió una respuesta inválida. Inténtalo de nuevo.": "JSON invalido del modelo",

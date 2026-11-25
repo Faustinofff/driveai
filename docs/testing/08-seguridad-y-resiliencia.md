@@ -69,7 +69,7 @@ Actuator expone solo `health` e `info`.
 - **Hallazgo D-01 (cerrado el 10/11/2026):** la contraseña de demo aparecía en el README
   de 3 commits (`3f19436`, `4d0e6d7`, `43903d0`) y una clave JWT de prueba de alta
   entropía en `ApiContractIT.java`. Con autorización del equipo se reescribió el
-  historial (`14-saneamiento-historial-D01.md`), se rotó `ADMIN_PASSWORD` y se verificó
+  historial (`15-saneamiento-historial-D01.md`), se rotó `ADMIN_PASSWORD` y se verificó
   con Gitleaks 8.30.1 sobre todo el historial: **`no leaks found`**.
 - En CI Gitleaks ahora es **bloqueante** y corre dos veces en `security-scan`: la action
   sobre los commits del push y `gitleaks git --log-opts="--all" --exit-code 1` sobre el

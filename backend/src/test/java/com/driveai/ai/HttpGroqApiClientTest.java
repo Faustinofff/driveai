@@ -115,7 +115,8 @@ class HttpGroqApiClientTest {
 
         assertThatThrownBy(() -> client().chatCompletion("s", "u"))
                 .isInstanceOf(GroqApiException.class)
-                .hasMessageContaining("GROQ_MODEL")
+                .hasMessageContaining("modelo configurado")
+                .hasMessageNotContaining("GROQ_MODEL")
                 .hasMessageNotContaining("private-token-value");
     }
 
@@ -138,7 +139,8 @@ class HttpGroqApiClientTest {
 
         assertThatThrownBy(() -> client().chatCompletion("s", "u"))
                 .isInstanceOf(GroqApiException.class)
-                .hasMessageContaining("GROQ_MODEL");
+                .hasMessageContaining("modelo configurado")
+                .hasMessageNotContaining("GROQ_MODEL");
     }
 
     @Test
@@ -156,7 +158,8 @@ class HttpGroqApiClientTest {
 
         assertThatThrownBy(() -> client().chatCompletion("s", "u"))
                 .isInstanceOf(GroqApiException.class)
-                .hasMessageContaining("autenticar");
+                .hasMessageContaining("autenticar")
+                .hasMessageNotContaining("GROQ_API_KEY");
     }
 
     @Test
@@ -165,7 +168,8 @@ class HttpGroqApiClientTest {
 
         assertThatThrownBy(() -> client().chatCompletion("s", "u"))
                 .isInstanceOf(GroqApiException.class)
-                .hasMessageContaining("autenticar");
+                .hasMessageContaining("autenticar")
+                .hasMessageNotContaining("GROQ_API_KEY");
     }
 
     @Test

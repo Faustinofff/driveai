@@ -133,20 +133,35 @@ PostgreSQL en la máquina.
 ```bash
 # 1) Copiar la plantilla de variables
 cp .env.example .env          # Windows PowerShell: copy .env.example .env
+```
 
-# 2) Completar en .env las variables OBLIGATORIAS:
-#    JWT_SECRET       → openssl rand -base64 48
-#    ADMIN_EMAIL      → admin@driveai.com
-#    ADMIN_PASSWORD   → contraseña que elijas para la demo
-#    GROQ_API_KEY     → opcional (sin clave el asesor IA responde 503)
+2) Abrir `.env` y completar estas variables **obligatorias** (las demás ya traen un valor
+que sirve tal cual). Si falta alguna, `docker compose up` se corta y dice cuál:
 
+| Variable | Qué poner | Ejemplo |
+|---|---|---|
+| `POSTGRES_PASSWORD` | contraseña de la base | cualquier texto sin espacios |
+| `RABBITMQ_USER` | usuario del broker | `driveai` |
+| `RABBITMQ_PASSWORD` | contraseña del broker | cualquier texto sin espacios |
+| `JWT_SECRET` | secreto de firma, ≥ 32 bytes | salida de `openssl rand -base64 48` |
+| `ADMIN_EMAIL` | email del administrador | `admin@driveai.test` |
+| `ADMIN_PASSWORD` | contraseña del administrador | la que elijas |
+
+Opcional: `GROQ_API_KEY` (asesor IA). Sin clave, el asesor responde 503 y el resto del
+e-commerce funciona igual. `GROQ_MODEL` tiene que quedar en `openai/gpt-oss-120b`.
+
+```bash
 # 3) Levantar TODO con un único comando
 docker compose up -d --build
 
-# 4) Verificar
+# 4) Verificar (el backend tarda 1-2 min en quedar "healthy")
 docker compose ps
 curl http://localhost:8080/actuator/health     # → {"status":"UP"}
 ```
+
+> **Si ya habías levantado el proyecto antes**: la base y el broker guardan las
+> contraseñas del primer arranque. Si cambiaste `POSTGRES_PASSWORD`, `RABBITMQ_*` o
+> `ADMIN_PASSWORD`, recreá los volúmenes con `docker compose down -v` antes del `up`.
 
 Servicios y puertos:
 
@@ -158,7 +173,7 @@ Servicios y puertos:
 | OpenAPI JSON    | `http://localhost:8080/v3/api-docs`              | 8080   |
 | PostgreSQL      | `jdbc:postgresql://localhost:5432/cardb`         | 5432   |
 | RabbitMQ        | `amqp://localhost:5672`                          | 5672   |
-| RabbitMQ panel  | `http://localhost:15672` (guest/guest por defecto) | 15672 |
+| RabbitMQ panel  | `http://localhost:15672` (`RABBITMQ_USER` / `RABBITMQ_PASSWORD` del `.env`) | 15672 |
 | Mock SOAP       | `http://localhost:8089/soap/vehicles`            | 8089   |
 | Mock SOAP WSDL  | `http://localhost:8089/soap/vehicles?wsdl`       | 8089   |
 | WireMock admin  | `http://localhost:8089/__admin`                  | 8089   |
@@ -171,14 +186,14 @@ docker compose down -v       # detener y borrar volúmenes (reset total de BD y 
 ```
 
 > El backend espera los healthchecks de PostgreSQL y RabbitMQ y aplica las migraciones
-> Flyway automáticamente. Si falta una variable obligatoria, el contenedor del backend
-> se detiene con un mensaje explícito (`Falta … en .env`).
+> Flyway automáticamente. Si falta una variable obligatoria, `docker compose up` no
+> arranca y muestra un mensaje explícito (`Falta … en .env`).
 
 ### 👤 Usuarios para ingresar
 
 | Rol      | Email                    | Contraseña                                            |
 |----------|--------------------------|-------------------------------------------------------|
-| ADMIN    | `ADMIN_EMAIL` de `.env` (recomendado `admin@driveai.com`) | `ADMIN_PASSWORD` definida en `.env` |
+| ADMIN    | `ADMIN_EMAIL` de `.env` (recomendado `admin@driveai.test`) | `ADMIN_PASSWORD` definida en `.env` |
 | CUSTOMER | cualquiera que se registre desde `/#/login` | la que elija al registrarse |
 
 El administrador se crea automáticamente en el primer arranque si no existe. La contraseña
@@ -412,9 +427,9 @@ Casos de testing de IA (prompt injection, datos inventados, proveedor caído, et
 | -------- | ----------- | ------- |
 | `POSTGRES_DB` | Nombre de la base | `cardb` |
 | `POSTGRES_USER` | Usuario de la base | `cardb_user` |
-| `POSTGRES_PASSWORD` | Contraseña de la base | `cardb_pass` (cámbiala en prod) |
+| `POSTGRES_PASSWORD` | Contraseña de la base | **obligatoria**, sin default |
 | `POSTGRES_PORT` | Puerto expuesto de PostgreSQL | `5432` |
-| `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | Credenciales del broker | `guest` / `guest` |
+| `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | Credenciales del broker | **obligatorias**, sin default |
 | `RABBITMQ_PORT` / `RABBITMQ_MANAGEMENT_PORT` | Puertos AMQP / panel | `5672` / `15672` |
 | `GROQ_API_KEY` | API Key de Groq (opcional) | vacía |
 | `GROQ_MODEL` | Modelo LLM | `openai/gpt-oss-120b` |

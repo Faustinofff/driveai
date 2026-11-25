@@ -43,6 +43,14 @@ function uid(): string {
   return `m-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+// Ante un 503 se muestra el motivo que manda el backend (Problem Details): saturado,
+// timeout, clave o modelo mal configurados. Antes todo 503 decía "saturado" y
+// escondía errores de configuración (DEF-16).
+function messageFor(kind: ErrorKind, error: ApiError): string {
+  if (kind === 'busy' && error.detail && error.message) return error.message
+  return KIND_MESSAGES[kind]
+}
+
 function kindFromError(error: ApiError): ErrorKind {
   if (error.status === 429) return 'rate-limit'
   if (error.status === 503) return 'busy'
@@ -159,7 +167,7 @@ export function AiChat() {
         {
           id: uid(),
           role: 'assistant',
-          content: KIND_MESSAGES[kind],
+          content: messageFor(kind, apiError),
           kind,
           retryPrompt: prompt,
         },
