@@ -46,6 +46,28 @@ jobs:
       - name: Probar frontend, JWT, roles, checkout, State y mensajeria
         run: python3 ci/verify-partial2.py --frontend --messaging --report work/partial2-smoke.json
 
+      - name: Verificar HTTPS en nginx (DEF-19)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p work
+          base=https://localhost:5443
+          # Handshake TLS 1.2+ y cabeceras de seguridad servidas por HTTPS.
+          curl -sS -k --tlsv1.2 -o /dev/null -D work/https-headers.txt "$base/"
+          grep -qiE '^HTTP/[0-9.]+ 200' work/https-headers.txt
+          grep -qi '^strict-transport-security:' work/https-headers.txt
+          grep -qi '^content-security-policy:' work/https-headers.txt
+          # La API responde por HTTPS a traves del proxy, con el origen HTTPS permitido en CORS.
+          code=$(curl -sS -k -o /dev/null -w '%{http_code}' -H "Origin: $base" "$base/api/cars")
+          test "$code" = 200
+          body=$(python3 -c 'import json,os; print(json.dumps({"email": os.environ["ADMIN_EMAIL"], "password": os.environ["ADMIN_PASSWORD"]}))')
+          code=$(curl -sS -k -o /dev/null -w '%{http_code}' -H "Origin: $base" -H 'Content-Type: application/json' --data "$body" "$base/api/auth/login")
+          test "$code" = 200
+          # Evidencia del certificado (solo sujeto y vencimiento; nunca la clave).
+          echo | openssl s_client -connect localhost:5443 -servername localhost 2>/dev/null \
+            | openssl x509 -noout -subject -enddate | tee work/https-cert.txt
+          echo "HTTPS OK: TLS, cabeceras, API y login por https://localhost:5443"
+
       - name: Registrar estado y logs del despliegue
         if: always()
         run: |

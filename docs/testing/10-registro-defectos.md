@@ -28,8 +28,8 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | --- | --- | --- | --- |
 | Bloqueante | 0 | 0 | 0 |
 | Crítica | 0 | 0 | 3 (D-01, DEF-07, DEF-08) |
-| Mayor | 2 (DEF-18, DEF-19) | 2 (DEF-11, DEF-15) | 7 (D-04, D-05, DEF-09, DEF-10, DEF-12, DEF-13, DEF-14) |
-| Menor | 1 (D-03) | 3 (DEF-16, DEF-17, DEF-20) | 0 |
+| Mayor | 1 (DEF-18) | 2 (DEF-11, DEF-19) | 8 (D-04, D-05, DEF-09, DEF-10, DEF-12, DEF-13, DEF-14, DEF-15) |
+| Menor | 1 (D-03) | 1 (DEF-17) | 2 (DEF-16, DEF-20) |
 
 > ✅ **D-01 cerrado el 10/11/2026**: historial reescrito y verificado con Gitleaks
 > (`no leaks found` sobre todo el historial). Ver `15-saneamiento-historial-D01.md`.
@@ -190,7 +190,7 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Esperado | El arranque se corta con un mensaje que dice qué variable falta; la plantilla no trae contraseñas |
 | Obtenido | `.env.example` traía `POSTGRES_PASSWORD=cardb_pass` y RabbitMQ `guest/guest`, y `docker-compose.yml` usaba esos valores por defecto sin avisar |
 | Corrección | `.env.example` sin valores reales; `docker-compose.yml` con `${VAR:?Falta VAR en .env}` para `POSTGRES_PASSWORD`, `RABBITMQ_USER` y `RABBITMQ_PASSWORD`; README con tabla de variables obligatorias; los workflows que usan Compose generan credenciales efímeras |
-| Estado | Corregido en `fix/entrega-final-g1` — pendiente CI |
+| Estado | **Cerrado — verificado en CI sobre el PR de `fix/entrega-final-g1` (25/11)**: 12/12 checks en verde, incluidos E2E Playwright (prompt injection) y Compose |
 
 ### DEF-16 · El asesor IA muestra "saturado" ante cualquier 503
 
@@ -205,7 +205,7 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Obtenido | Siempre "El servicio de IA está saturado en este momento"; el backend sí devolvía el motivo en Problem Details |
 | Causa raíz | `AiChat.tsx` mapeaba todo 503 a un texto fijo e ignoraba el `detail` |
 | Corrección | `AiChat.tsx` muestra el `detail` del backend ante un 503; `.env.example` y README advierten sobre `GROQ_MODEL` |
-| Estado | Corregido en `fix/entrega-final-g1` — pendiente CI |
+| Estado | **Cerrado — verificado en CI sobre el PR de `fix/entrega-final-g1` (25/11)**: 12/12 checks en verde, incluidos E2E Playwright (prompt injection) y Compose |
 
 ### DEF-20 · El mensaje de error del asesor IA nombraba la variable `GROQ_API_KEY`
 
@@ -220,7 +220,7 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Obtenido | "…Verifica que GROQ_API_KEY esté configurada correctamente." visible para el cliente |
 | Causa raíz | `HttpGroqApiClient` armaba mensajes para el usuario final con nombres de configuración interna; quedaron visibles al mostrar el `detail` del 503 (DEF-16) |
 | Corrección | Mensajes de 401/403 y 400/404/422 reescritos sin nombres de variables ("Avisale al administrador…"); `ci/groq_diagnostics.py` y su test actualizados |
-| Estado | Corregido en `fix/entrega-final-g1` — pendiente CI |
+| Estado | **Cerrado — verificado en CI sobre el PR de `fix/entrega-final-g1` (25/11)**: 12/12 checks en verde, incluidos E2E Playwright (prompt injection) y Compose |
 
 ### DEF-17 · Scripts de CI escriben el reporte en una ruta arbitraria (SonarCloud)
 
@@ -254,9 +254,11 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Severidad / Prioridad | Mayor / Media (criterio "cifrado en tránsito" del Eje D) |
 | Detectado por | Revisión del informe de seguridad contra los criterios |
 | Obtenido | nginx y la API sirven HTTP plano en `localhost` |
+| Causa raíz | La imagen de nginx solo escuchaba en el puerto 80; TLS se había delegado a un proxy externo que no existe en la demo |
+| Corrección | `frontend/nginx.conf` con server 443 (`ssl`, `http2`, TLS 1.2/1.3), `frontend/docker-entrypoint.d/10-driveai-tls.sh` genera el certificado; `docker-compose.yml` publica `FRONTEND_HTTPS_PORT` y agrega el origen HTTPS a CORS |
 | Esperado | Tráfico cifrado con TLS |
 | Workaround | Entorno de demo local: el tráfico no sale de la máquina. En un despliegue real se publica detrás de un proxy con TLS (HSTS ya está configurado) |
-| Estado | **Abierto** — decidir si se agrega TLS a nginx o se documenta como NO CUMPLE justificado |
+| Estado | **Corregido — pendiente CI**: nginx sirve HTTPS (TLS 1.2/1.3) en `https://localhost:5443` con certificado autofirmado generado al iniciar el contenedor (sin certificados en el repo). El workflow *Entrega 2 - flujo desplegado* verifica handshake, cabeceras (HSTS, CSP), API y login por HTTPS. HTTP 5173 se mantiene para la suite automatizada local |
 
 ### Defectos previos (de `01-plan-de-pruebas.md`)
 
