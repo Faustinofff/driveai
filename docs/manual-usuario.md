@@ -55,13 +55,14 @@ docker compose ps
 curl http://localhost:8080/actuator/health
 ```
 
-Abrir **http://localhost:5173**.
+Abrir **https://localhost:5443**. La primera vez el navegador avisa que el certificado no es de confianza (es autofirmado, generado al levantar el sistema): tocar **Avanzado → Continuar a localhost**. También funciona **http://localhost:5173**, que es el que usa la suite automatizada.
 
 ### Servicios y puertos
 
 | Servicio | URL |
 | --- | --- |
-| Frontend | http://localhost:5173 |
+| Frontend (HTTPS) | https://localhost:5443 |
+| Frontend (HTTP) | http://localhost:5173 |
 | Backend | http://localhost:8080 |
 | Swagger UI | http://localhost:8080/swagger-ui.html |
 | RabbitMQ | http://localhost:15672 |

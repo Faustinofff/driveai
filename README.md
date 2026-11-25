@@ -163,11 +163,16 @@ curl http://localhost:8080/actuator/health     # → {"status":"UP"}
 > contraseñas del primer arranque. Si cambiaste `POSTGRES_PASSWORD`, `RABBITMQ_*` o
 > `ADMIN_PASSWORD`, recreá los volúmenes con `docker compose down -v` antes del `up`.
 
+> **HTTPS**: la app se usa en `https://localhost:5443`. Como el certificado es
+> autofirmado, el navegador muestra un aviso la primera vez: tocá **Avanzado → Continuar
+> a localhost**. Es esperable en un entorno local; el tráfico va cifrado igual (TLS 1.2/1.3).
+
 Servicios y puertos:
 
 | Servicio        | URL                                              | Puerto |
 |-----------------|--------------------------------------------------|--------|
-| Frontend        | `http://localhost:5173`                          | 5173   |
+| Frontend (HTTPS)| `https://localhost:5443`                         | 5443   |
+| Frontend (HTTP) | `http://localhost:5173` (lo usa la suite automatizada) | 5173   |
 | Backend API     | `http://localhost:8080`                          | 8080   |
 | Swagger UI      | `http://localhost:8080/swagger-ui.html`          | 8080   |
 | OpenAPI JSON    | `http://localhost:8080/v3/api-docs`              | 8080   |
@@ -442,10 +447,11 @@ Casos de testing de IA (prompt injection, datos inventados, proveedor caído, et
 | `JWT_EXPIRATION_MINUTES` | Expiración del token | `1440` |
 | `JWT_ISSUER` | Emisor esperado | `driveai` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Admin inicial | vacío |
-| `CORS_ALLOWED_ORIGINS` | Orígenes permitidos | `http://localhost:5173,http://localhost:4173` |
+| `CORS_ALLOWED_ORIGINS` | Orígenes permitidos (Compose agrega siempre `https://localhost:5443`) | `http://localhost:5173,http://localhost:4173` |
 | `SOAP_MOCK_PORT` | Puerto del mock SOAP | `8089` |
 | `VITE_API_URL` | URL absoluta de la API | vacío |
-| `FRONTEND_PORT` | Puerto del frontend | `5173` |
+| `FRONTEND_PORT` | Puerto HTTP del frontend | `5173` |
+| `FRONTEND_HTTPS_PORT` | Puerto HTTPS del frontend (se agrega solo a CORS) | `5443` |
 
 En `prod` las variables obligatorias usan `${VAR:?mensaje}` y el arranque falla con un
 mensaje claro si faltan.
@@ -510,8 +516,10 @@ un payload corrupto queda `FAILED` para reproceso manual).
 - `ddl-auto=validate` evita desalineaciones entre Flyway y las entidades.
 - El checkout usa `PESSIMISTIC_WRITE` por auto para prevenir sobreventa.
 - El outbox garantiza publicación confiable; el consumidor deduplica por `messageId`.
-- TLS debe terminar en el reverse proxy / balanceador (no se incluye certificado en el
-  repositorio).
+- TLS termina en nginx (`https://localhost:5443`). En Compose el certificado es
+  autofirmado y se genera al crear el contenedor (`frontend/docker-entrypoint.d/10-driveai-tls.sh`);
+  no hay certificados en el repositorio. En producción se monta uno real en
+  `/etc/nginx/certs/tls.crt` y `tls.key` y el script lo respeta.
 
 ---
 
