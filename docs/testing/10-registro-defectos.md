@@ -28,11 +28,11 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | --- | --- | --- | --- |
 | Bloqueante | 0 | 0 | 0 |
 | Crítica | 0 | 0 | 3 (D-01, DEF-07, DEF-08) |
-| Mayor | 0 | 1 (DEF-11, falta la pasada con `docker compose up`) | 7 (D-04, D-05, DEF-09, DEF-10, DEF-12, DEF-13, DEF-14) |
-| Menor | 1 (D-03) | 0 | 0 |
+| Mayor | 2 (DEF-18, DEF-19) | 2 (DEF-11, DEF-15) | 7 (D-04, D-05, DEF-09, DEF-10, DEF-12, DEF-13, DEF-14) |
+| Menor | 1 (D-03) | 2 (DEF-16, DEF-17) | 0 |
 
 > ✅ **D-01 cerrado el 10/11/2026**: historial reescrito y verificado con Gitleaks
-> (`no leaks found` sobre todo el historial). Ver `14-saneamiento-historial-D01.md`.
+> (`no leaks found` sobre todo el historial). Ver `15-saneamiento-historial-D01.md`.
 > Al cierre no queda ningún Bloqueante ni Crítico abierto.
 
 ## Detalle
@@ -177,6 +177,71 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Corrección | pgjdbc → 42.7.12 (`postgresql.version` en `pom.xml`); follow-redirects → 1.16.2 (`npm update follow-redirects`); CVE-2026-22733 mitigada: no se usa Cloud Foundry y `management.cloudfoundry.enabled=false`, excepción documentada en `.trivyignore` |
 | Pendiente | Migrar a Spring Boot 3.5.12+ para eliminar la excepción (4.ª entrega) |
 | Estado | **Cerrado — verificado en CI sobre `main`**: Trivy (`CRITICAL,HIGH`, `--exit-code 1`) sin hallazgos |
+
+### DEF-15 · `.env.example` con contraseñas por defecto y sin corte claro
+
+| Campo | Valor |
+| --- | --- |
+| Id Jira | _completar_ |
+| Severidad / Prioridad | Mayor / Alta (G1 y aclaración docente del 25/11) |
+| HU | Transversal (G1 · Eje D) |
+| Detectado por | Revisión de G1 contra la aclaración de la cátedra, asistida por IA (Claude) |
+| Pasos | Clonar, `cp .env.example .env` sin completar nada, `docker compose up` |
+| Esperado | El arranque se corta con un mensaje que dice qué variable falta; la plantilla no trae contraseñas |
+| Obtenido | `.env.example` traía `POSTGRES_PASSWORD=cardb_pass` y RabbitMQ `guest/guest`, y `docker-compose.yml` usaba esos valores por defecto sin avisar |
+| Corrección | `.env.example` sin valores reales; `docker-compose.yml` con `${VAR:?Falta VAR en .env}` para `POSTGRES_PASSWORD`, `RABBITMQ_USER` y `RABBITMQ_PASSWORD`; README con tabla de variables obligatorias; los workflows que usan Compose generan credenciales efímeras |
+| Estado | Corregido en `fix/entrega-final-g1` — pendiente CI |
+
+### DEF-16 · El asesor IA muestra "saturado" ante cualquier 503
+
+| Campo | Valor |
+| --- | --- |
+| Id Jira | _completar_ |
+| Severidad / Prioridad | Menor / Media |
+| HU | HU-08 · escenario "Proveedor no disponible" |
+| Detectado por | Uso del sistema por el equipo (15/11): con un `.env` viejo (`GROQ_MODEL=groq/compound-mini`) el asesor decía "saturado" |
+| Pasos | Configurar un modelo que no soporta el esquema estricto, o una clave inválida, y consultar al asesor |
+| Esperado | Mensaje que indique el motivo (configuración, autenticación, timeout o saturación) |
+| Obtenido | Siempre "El servicio de IA está saturado en este momento"; el backend sí devolvía el motivo en Problem Details |
+| Causa raíz | `AiChat.tsx` mapeaba todo 503 a un texto fijo e ignoraba el `detail` |
+| Corrección | `AiChat.tsx` muestra el `detail` del backend ante un 503; `.env.example` y README advierten sobre `GROQ_MODEL` |
+| Estado | Corregido en `fix/entrega-final-g1` — pendiente CI |
+
+### DEF-17 · Scripts de CI escriben el reporte en una ruta arbitraria (SonarCloud)
+
+| Campo | Valor |
+| --- | --- |
+| Id Jira | _completar_ |
+| Severidad / Prioridad | Menor / Media (herramienta de CI, no producto) |
+| Detectado por | SonarCloud en el PR #4 ("Path Traversal via LLM-supplied CLI arguments") |
+| Obtenido | `ci/verify-live-ai.py` y `ci/verify-partial2.py` escribían en la ruta de `--report` sin validarla |
+| Corrección | El reporte se guarda siempre en `work/`; de `--report` solo se usa el nombre del archivo |
+| Estado | Corregido en `fix/entrega-final-g1` — pendiente nuevo análisis de SonarCloud |
+
+### DEF-18 · Quality Gate de SonarCloud no aprobado
+
+| Campo | Valor |
+| --- | --- |
+| Id Jira | _completar_ |
+| Severidad / Prioridad | Mayor / Alta (umbral del Eje B) |
+| Detectado por | SonarCloud sobre `main` (análisis del 14/11) |
+| Obtenido | Seguridad **E** (22 issues), Fiabilidad **C** (10 issues), cobertura sin configurar, 13 riesgos de dependencias |
+| Esperado | Ratings A en seguridad y fiabilidad, 0 vulnerabilidades, cobertura informada, 100 % de hotspots revisados |
+| Plan | Desactivar el análisis automático y correrlo desde CI con JaCoCo (`13-configurar-sonarcloud.md`); clasificar cada issue: corregir o marcar como falso positivo con justificación |
+| Workaround | Las mismas reglas se cubren hoy con SpotBugs, Trivy, Gitleaks y ZAP en CI |
+| Estado | **Abierto** — responsable: _completar_ |
+
+### DEF-19 · Sin TLS en el despliegue con Docker Compose
+
+| Campo | Valor |
+| --- | --- |
+| Id Jira | _completar_ |
+| Severidad / Prioridad | Mayor / Media (criterio "cifrado en tránsito" del Eje D) |
+| Detectado por | Revisión del informe de seguridad contra los criterios |
+| Obtenido | nginx y la API sirven HTTP plano en `localhost` |
+| Esperado | Tráfico cifrado con TLS |
+| Workaround | Entorno de demo local: el tráfico no sale de la máquina. En un despliegue real se publica detrás de un proxy con TLS (HSTS ya está configurado) |
+| Estado | **Abierto** — decidir si se agrega TLS a nginx o se documenta como NO CUMPLE justificado |
 
 ### Defectos previos (de `01-plan-de-pruebas.md`)
 

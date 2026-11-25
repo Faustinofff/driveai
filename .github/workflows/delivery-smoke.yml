@@ -32,6 +32,13 @@ jobs:
           echo "::add-mask::$admin_password"
           echo "JWT_SECRET=$jwt_secret" >> "$GITHUB_ENV"
           echo "ADMIN_PASSWORD=$admin_password" >> "$GITHUB_ENV"
+          db_password=$(openssl rand -hex 24)
+          mq_password=$(openssl rand -hex 24)
+          echo "::add-mask::$db_password"
+          echo "::add-mask::$mq_password"
+          echo "POSTGRES_PASSWORD=$db_password" >> "$GITHUB_ENV"
+          echo "RABBITMQ_USER=driveai" >> "$GITHUB_ENV"
+          echo "RABBITMQ_PASSWORD=$mq_password" >> "$GITHUB_ENV"
 
       - name: Construir y desplegar las capas
         run: docker compose up -d --build --wait --wait-timeout 240

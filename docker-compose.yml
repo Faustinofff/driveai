@@ -21,7 +21,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-cardb}
       POSTGRES_USER: ${POSTGRES_USER:-cardb_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cardb_pass}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env (ver README)}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -42,8 +42,8 @@ services:
     container_name: driveai-rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Falta RABBITMQ_USER en .env (ver README)}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Falta RABBITMQ_PASSWORD en .env (ver README)}
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
@@ -95,7 +95,7 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-cardb}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-cardb_user}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-cardb_pass}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en .env (ver README)}
       JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en .env (>= 32 bytes en Base64)}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-1440}
       JWT_ISSUER: ${JWT_ISSUER:-driveai}
@@ -109,8 +109,8 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:4173}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_USER: ${RABBITMQ_USER:?Falta RABBITMQ_USER en .env (ver README)}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Falta RABBITMQ_PASSWORD en .env (ver README)}
       SOAP_BASE_URL: http://soap-mock:8080
       SOAP_PATH: /soap/vehicles
       OUTBOX_ENABLED: "true"
