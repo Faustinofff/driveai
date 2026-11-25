@@ -20,7 +20,7 @@ class GroqDiagnosticsTest(unittest.TestCase):
 
     def test_backend_configuration_error_is_distinguished_from_authentication(self):
         result = safe_http_error(self.error(503,
-            "La configuración del modelo de IA no es válida. Revisa GROQ_MODEL y los parámetros de la solicitud."), backend=True)
+            "La configuración del modelo de IA no es válida. Avisale al administrador para que revise el modelo configurado."), backend=True)
         self.assertEqual(result, "HTTP 503: modelo o parametros de Groq")
 
     @patch.dict(os.environ, {"GROQ_API_KEY": ""})

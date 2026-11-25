@@ -97,11 +97,11 @@ public class HttpGroqApiClient implements GroqApiClient {
         }
         if (status == 401 || status == 403) {
             return new GroqApiException(
-                    "No se pudo autenticar con el servicio de IA. Verifica que GROQ_API_KEY esté configurada correctamente.", ex);
+                    "No se pudo autenticar con el servicio de IA. Avisale al administrador para que revise la clave configurada.", ex);
         }
         if (status == 400 || status == 404 || status == 422) {
             return new GroqApiException(
-                    "La configuración del modelo de IA no es válida. Revisa GROQ_MODEL y los parámetros de la solicitud.", ex);
+                    "La configuración del modelo de IA no es válida. Avisale al administrador para que revise el modelo configurado.", ex);
         }
         return new GroqApiException("El servicio de IA no está disponible por el momento.", ex);
     }
