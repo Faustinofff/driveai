@@ -29,7 +29,7 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Bloqueante | 0 | 0 | 0 |
 | Crítica | 0 | 0 | 3 (D-01, DEF-07, DEF-08) |
 | Mayor | 1 (DEF-18) | 2 (DEF-11, DEF-19) | 8 (D-04, D-05, DEF-09, DEF-10, DEF-12, DEF-13, DEF-14, DEF-15) |
-| Menor | 1 (D-03) | 1 (DEF-17) | 2 (DEF-16, DEF-20) |
+| Menor | 1 (D-03) | 2 (DEF-17, DEF-21) | 2 (DEF-16, DEF-20) |
 
 > ✅ **D-01 cerrado el 10/11/2026**: historial reescrito y verificado con Gitleaks
 > (`no leaks found` sobre todo el historial). Ver `15-saneamiento-historial-D01.md`.
@@ -268,6 +268,19 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | D-03 | Menor | `OrderEventsListener` solo registra el evento | Aceptado / documentado |
 | D-04 | Mayor | Testcontainers no corrió en local por falta de Docker | **Cerrado 10/11**: 18/18 IT en local con Docker Desktop |
 | D-05 | Mayor | k6 sí se ejecutó; ZAP y Trivy no corrieron en local. **ZAP y Trivy corren en CI** (`dast-zap`, `security-scan`) | **Cerrado 10/11**: en el run de `main` ZAP terminó con 0 High / 0 Medium (118 PASS) y Trivy sin hallazgos |
+
+### DEF-21 · Dependencias del frontend con vulnerabilidades según `npm audit` (2 altas, 2 moderadas)
+
+| Campo | Valor |
+| --- | --- |
+| Id Jira | _completar_ |
+| Severidad / Prioridad | Menor / Alta (dependencias de build y del servidor de desarrollo) |
+| HU | Transversal · Eje D (dependencias) |
+| Detectado por | `npm audit` en `frontend/` (26/11) y aviso del `npm ci` en el build de la imagen |
+| Obtenido | `vite` ≤ 6.4.3 (alta) con `esbuild` ≤ 0.24.2 (moderada, GHSA-67mh-4wv8-2f99), `source-map-js` 1.0.0–1.2.1 (alta, GHSA-68fv-2mgg-jv7q), `postcss-selector-parser` < 6.1.5 (moderada, GHSA-rj75-hqrm-r3gf) |
+| Análisis | Son dependencias de compilación y del servidor de desarrollo; la imagen final solo contiene los estáticos de `dist/` servidos por nginx. Aun así el script `dev` usa `vite --host` (servidor expuesto en la red local), por lo que no se acepta el riesgo |
+| Corrección | `npm audit fix` (source-map-js, postcss-selector-parser) y actualización de Vite 5 → 6 (`npm install -D vite@6`), que trae un esbuild corregido. Resultado: `npm audit` → **0 vulnerabilidades**; `npm run build` OK |
+| Estado | **Corregido — pendiente CI** (build, E2E Playwright y Compose sobre el PR) |
 
 ## Hallazgos de proceso (no son defectos del producto)
 
