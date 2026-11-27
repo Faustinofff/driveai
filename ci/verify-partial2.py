@@ -3,6 +3,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -14,6 +15,18 @@ import uuid
 # El reporte siempre se escribe dentro de work/: --report solo elige el nombre del
 # archivo. Evita escribir en rutas arbitrarias (SonarCloud: path traversal).
 REPORT_DIR = Path(__file__).resolve().parent.parent / "work"
+
+# Usuario y base de PostgreSQL para el chequeo de mensajeria. No se reciben por
+# linea de comandos (SonarCloud S8705): salen del mismo .env que usa Compose y se
+# validan como identificadores PostgreSQL antes de pasarlos a psql.
+PG_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,62}")
+
+
+def pg_identifier(env_name, default):
+    value = os.getenv(env_name) or default
+    if not PG_IDENTIFIER.fullmatch(value):
+        raise SystemExit(f"{env_name} no es un identificador PostgreSQL valido")
+    return value
 
 
 def require(condition, message):
@@ -28,8 +41,6 @@ def main():
                         help="Comprueba que el origen sirve el HTML de la SPA")
     parser.add_argument("--messaging", action="store_true",
                         help="Verifica outbox y consumo en PostgreSQL via Docker Compose")
-    parser.add_argument("--db-user", default="cardb_user")
-    parser.add_argument("--db-name", default="cardb")
     parser.add_argument("--report", default="work/partial2-smoke.json")
     args = parser.parse_args()
     email, password = os.getenv("ADMIN_EMAIL"), os.getenv("ADMIN_PASSWORD")
@@ -124,12 +135,14 @@ def main():
                 f"where o.aggregate_id = {order_id} and o.status = 'SENT' "
                 "and p.consumer = 'order-events-consumer'"
             )
+            db_user = pg_identifier("POSTGRES_USER", "cardb_user")
+            db_name = pg_identifier("POSTGRES_DB", "cardb")
             deadline = time.monotonic() + 40
             count = 0
             while time.monotonic() < deadline:
                 result = subprocess.run(
                     ["docker", "compose", "exec", "-T", "postgres", "psql",
-                     "-U", args.db_user, "-d", args.db_name, "-tAc", query],
+                     "-U", db_user, "-d", db_name, "-tAc", query],
                     cwd=Path(__file__).resolve().parent.parent,
                     check=True, capture_output=True, text=True, timeout=10)
                 count = int(result.stdout.strip())

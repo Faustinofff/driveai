@@ -7,7 +7,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# --ignore-scripts: sin scripts de instalación de terceros (Sonar S6505); el build no los necesita.
+RUN npm ci --ignore-scripts
 COPY . .
 ARG VITE_API_URL=""
 ENV VITE_API_URL=$VITE_API_URL

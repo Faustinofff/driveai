@@ -244,7 +244,8 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Esperado | Ratings A en seguridad y fiabilidad, 0 vulnerabilidades, cobertura informada, 100 % de hotspots revisados |
 | Plan | Desactivar el análisis automático y correrlo desde CI con JaCoCo (`13-configurar-sonarcloud.md`); clasificar cada issue: corregir o marcar como falso positivo con justificación |
 | Workaround | Las mismas reglas se cubren hoy con SpotBugs, Trivy, Gitleaks y ZAP en CI |
-| Estado | **Abierto** — responsable: _completar_ |
+| Avance 26/11 | Nuevo análisis de `main`: Seguridad **E** con 30 hallazgos. Corregidos en `fix/sonar-security`: acción de Gitleaks fijada por SHA (S7637); token de registro leído con `jq` desde archivo en vez de `curl \| python` (S8482, Schemathesis y ZAP); carpeta de ZAP sin `chmod 777`, propiedad del usuario de la imagen (S2612); `npm ci --ignore-scripts` en CI y en el Dockerfile (S6505); Playwright desde `node_modules/.bin` en vez de `npx` (S6505/S8543); Newman `6.2.3` exacto sin scripts (S6505/S8543); Schemathesis `3.39.16` exacto y solo wheels (S8541/S8544); path traversal en `ci/check-zap.py` (S8707); usuario y base de PostgreSQL de `ci/verify-partial2.py` validados y fuera de la línea de comandos (S8705); `crypto` en lugar de `Math.random` en el chat, el carrito, la clave de idempotencia y k6 (S2245); fondos de los modales como `<button>` nativo (S6848); `Number.parseFloat/parseInt` (S7773); sin regex en la URL base (S8786); la API rechaza con `ApiRequestError extends Error` (S6671); reporter de Playwright sin ternario duplicado (S3923) |
+| Estado | **Corregido — pendiente nuevo análisis de SonarCloud** sobre el PR de `fix/sonar-security` |
 
 ### DEF-19 · Sin TLS en el despliegue con Docker Compose
 
