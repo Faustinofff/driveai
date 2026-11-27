@@ -1,6 +1,21 @@
 import http from 'k6/http'
 import { check, sleep } from 'k6'
 import { Rate } from 'k6/metrics'
+import { randomBytes } from 'k6/crypto'
+
+// Aleatoriedad criptográfica de k6 (SonarCloud S2245). randomInt(3) elige 0, 1 o 2
+// con la misma probabilidad: descarta el byte 255 para no sesgar el reparto.
+function randomInt(max) {
+  const limit = 256 - (256 % max)
+  for (;;) {
+    const byte = new Uint8Array(randomBytes(1))[0]
+    if (byte < limit) return byte % max
+  }
+}
+
+function randomHex(length) {
+  return Array.from(new Uint8Array(randomBytes(length)), (b) => b.toString(16).padStart(2, '0')).join('')
+}
 
 /**
  * DriveAI — prueba de carga obligatoria.
@@ -46,7 +61,7 @@ export const options = {
 }
 
 function uniqueEmail() {
-  return `load-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@driveai.test`
+  return `load-${Date.now()}-${randomHex(4)}@driveai.test`
 }
 
 export function setup() {
@@ -89,7 +104,7 @@ export function setup() {
 
 export default function (data) {
   const headers = { Accept: 'application/json' }
-  const choice = Math.floor(Math.random() * 3)
+  const choice = randomInt(3)
   let response
 
   if (choice === 0) {

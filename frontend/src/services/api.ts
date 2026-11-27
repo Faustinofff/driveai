@@ -1,3 +1,4 @@
+import { secureRandomId } from '../utils/secureRandomId'
 import axios, { AxiosError } from 'axios'
 import type {
   AiRecommendRequest,
@@ -26,7 +27,11 @@ const rawApiUrl = import.meta.env.VITE_API_URL as string | undefined
  */
 function resolveApiBaseUrl(raw?: string): string {
   if (!raw) return '/api'
-  const trimmed = raw.replace(/\/+$/, '')
+  // Sin expresión regular (SonarCloud S8786): se quitan las barras finales una a una.
+  let trimmed = raw
+  while (trimmed.endsWith('/')) {
+    trimmed = trimmed.slice(0, -1)
+  }
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`
 }
 
@@ -55,6 +60,23 @@ export interface ApiError {
   message: string
   status?: number
   detail?: unknown
+}
+
+/**
+ * Error que rechazan las llamadas a la API (SonarCloud S6671: rechazar con Error).
+ * Conserva message, status y detail, así que sigue cumpliendo la interfaz ApiError
+ * que usan los componentes.
+ */
+export class ApiRequestError extends Error implements ApiError {
+  status?: number
+  detail?: unknown
+
+  constructor(error: ApiError) {
+    super(error.message)
+    this.name = 'ApiRequestError'
+    this.status = error.status
+    this.detail = error.detail
+  }
 }
 
 export function normalizeError(error: unknown): ApiError {
@@ -103,7 +125,7 @@ api.interceptors.response.use(
         window.dispatchEvent(new Event('driveai:unauthorized'))
       }
     }
-    return Promise.reject(normalizeError(error))
+    return Promise.reject(new ApiRequestError(normalizeError(error)))
   },
 )
 
@@ -193,10 +215,7 @@ export async function removeCartItem(itemId: number): Promise<Cart> {
 // ───────────────────────── Órdenes ─────────────────────────
 
 function newIdempotencyKey(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID()
-  }
-  return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return secureRandomId()
 }
 
 export async function checkout(

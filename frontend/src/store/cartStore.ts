@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Car } from '../types'
+import { secureRandomId } from '../utils/secureRandomId'
 
 export interface CartLine {
   car: Car
@@ -22,10 +23,7 @@ interface CartStoreState {
 }
 
 function generateSessionId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID()
-  }
-  return `session-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+  return `session-${secureRandomId()}`
 }
 
 const DEFAULT_QUANTITY = 1

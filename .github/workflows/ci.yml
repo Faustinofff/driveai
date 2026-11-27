@@ -200,7 +200,10 @@ jobs:
 
       - name: Instalar dependencias del frontend
         working-directory: frontend
-        run: npm ci
+        # --ignore-scripts: no se ejecutan scripts de instalacion de terceros (Sonar S6505).
+        # El build no los necesita: esbuild resuelve su binario por plataforma desde
+        # optionalDependencies, y Chromium lo instala el paso siguiente.
+        run: npm ci --ignore-scripts
 
       - name: Build de producción
         working-directory: frontend
@@ -208,7 +211,7 @@ jobs:
 
       - name: Instalar Chromium de Playwright
         working-directory: frontend
-        run: npx playwright install --with-deps chromium
+        run: ./node_modules/.bin/playwright install --with-deps chromium
 
       - name: Generar secretos efímeros de la demo
         id: demo-secrets
@@ -246,7 +249,7 @@ jobs:
           VITE_API_URL: http://localhost:8080
           ADMIN_EMAIL: admin@driveai.test
           ADMIN_PASSWORD: ${{ steps.demo-secrets.outputs.admin_password }}
-        run: npx playwright test
+        run: ./node_modules/.bin/playwright test
 
       - name: Publicar reporte Playwright
         if: always()
@@ -274,7 +277,7 @@ jobs:
           fetch-depth: 0
 
       - name: Gitleaks (commits del push)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -362,7 +365,7 @@ jobs:
         env:
           ADMIN_PASSWORD: ${{ steps.demo-secrets.outputs.admin_password }}
         run: |
-          npm install -g newman@6
+          npm install -g --ignore-scripts newman@6.2.3
           mkdir -p reports
           newman run postman/DriveAI.postman_collection.json \
             --env-var baseUrl=http://localhost:8080 \
@@ -372,11 +375,15 @@ jobs:
 
       - name: Schemathesis — respuestas validadas contra el OpenAPI publicado
         run: |
-          pip install --quiet "schemathesis>=3.39,<4"
-          TOKEN=$(curl -fsS -X POST http://localhost:8080/api/auth/register \
+          # Version exacta y solo wheels: pip no ejecuta scripts de paquetes (Sonar S8541/S8544).
+          pip install --quiet --only-binary=:all: "schemathesis==3.39.16"
+          # La respuesta se guarda como dato y se lee con jq; no se ejecuta (Sonar S8482).
+          curl -fsS -X POST http://localhost:8080/api/auth/register \
             -H 'Content-Type: application/json' \
             -d "{\"email\":\"schemathesis-$(date +%s)@driveai.test\",\"password\":\"SchemaPassw0rd!\",\"fullName\":\"Schemathesis\"}" \
-            | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+            -o "$RUNNER_TEMP/schemathesis-auth.json"
+          TOKEN=$(jq -er '.token' "$RUNNER_TEMP/schemathesis-auth.json")
+          rm -f "$RUNNER_TEMP/schemathesis-auth.json"
           echo "::add-mask::$TOKEN"
           # /api/ai y /api/soap se excluyen: su 503/fallback ante proveedor caído es el
           # comportamiento esperado y está cubierto por Newman y por las unitarias.
@@ -468,12 +475,20 @@ jobs:
 
       - name: ZAP API scan (pasivo + activo) autenticado con JWT de cliente
         run: |
-          TOKEN=$(curl -fsS -X POST http://localhost:8080/api/auth/register \
+          # La respuesta se guarda como dato y se lee con jq; no se ejecuta (Sonar S8482).
+          curl -fsS -X POST http://localhost:8080/api/auth/register \
             -H 'Content-Type: application/json' \
             -d "{\"email\":\"zap-$(date +%s)@driveai.test\",\"password\":\"ZapScanPassw0rd!\",\"fullName\":\"ZAP\"}" \
-            | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+            -o "$RUNNER_TEMP/zap-auth.json"
+          TOKEN=$(jq -er '.token' "$RUNNER_TEMP/zap-auth.json")
+          rm -f "$RUNNER_TEMP/zap-auth.json"
           echo "::add-mask::$TOKEN"
-          mkdir -p zap && chmod 777 zap
+          # Sin chmod 777 (Sonar S2612): la carpeta pertenece al usuario de la imagen de
+          # ZAP (uid/gid leidos de la imagen) con 755; el runner solo necesita leer.
+          docker pull -q zaproxy/zap-stable
+          ZAP_UID=$(docker run --rm --entrypoint id zaproxy/zap-stable -u)
+          ZAP_GID=$(docker run --rm --entrypoint id zaproxy/zap-stable -g)
+          sudo install -d -m 0755 -o "$ZAP_UID" -g "$ZAP_GID" zap
           # -I: los WARN no cortan el job; el corte por High lo hace ci/check-zap.py.
           docker run --rm --network host \
             -v "$PWD/zap:/zap/wrk:rw" \

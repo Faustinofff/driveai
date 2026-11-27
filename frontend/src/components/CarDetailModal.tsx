@@ -59,7 +59,13 @@ export function CarDetailModal({ car, onClose, onAdd, feedback = 'idle' }: CarDe
         aria-modal="true"
         aria-labelledby="car-detail-title"
       >
-        <div className={OVERLAY} onClick={onClose} />
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Fondo del detalle"
+          onClick={onClose}
+          className={`${OVERLAY} cursor-default`}
+        />
 
         <div
           ref={panelRef}

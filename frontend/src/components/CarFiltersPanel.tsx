@@ -32,11 +32,11 @@ function toDraft(filters: CarFilters): Draft {
 function toFilters(draft: Draft): CarFilters {
   const filters: CarFilters = {}
   if (draft.brand.trim()) filters.brand = draft.brand.trim()
-  const minPrice = parseFloat(draft.minPrice)
+  const minPrice = Number.parseFloat(draft.minPrice)
   if (!Number.isNaN(minPrice)) filters.minPrice = minPrice
-  const maxPrice = parseFloat(draft.maxPrice)
+  const maxPrice = Number.parseFloat(draft.maxPrice)
   if (!Number.isNaN(maxPrice)) filters.maxPrice = maxPrice
-  const minYear = parseInt(draft.minYear, 10)
+  const minYear = Number.parseInt(draft.minYear, 10)
   if (!Number.isNaN(minYear)) filters.minYear = minYear
   if (draft.fuelType) filters.fuelType = draft.fuelType as FuelType
   if (draft.bodyType) filters.bodyType = draft.bodyType as BodyType

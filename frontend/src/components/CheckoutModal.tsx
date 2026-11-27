@@ -31,7 +31,13 @@ function CheckoutModalPanel({
         aria-modal="true"
         aria-labelledby="checkout-title"
       >
-        <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Fondo de la confirmación"
+          onClick={onClose}
+          className="absolute inset-0 cursor-default bg-slate-900/60 backdrop-blur-sm"
+        />
 
         <div
           ref={panelRef}

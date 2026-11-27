@@ -6,13 +6,23 @@ en docs/testing/08-seguridad-y-resiliencia.md. Este script las lista para eso.
 Uso: python3 ci/check-zap.py zap/zap-api.json
 """
 import json
+import os
+from pathlib import Path
 import sys
+
+# Los reportes de ZAP solo se leen desde zap/ (donde los escribe el workflow):
+# el argumento elige el nombre del archivo, no la carpeta (SonarCloud S8707).
+ZAP_DIR = Path(__file__).resolve().parent.parent / "zap"
 
 RISK = {"3": "HIGH", "2": "MEDIUM", "1": "LOW", "0": "INFO"}
 
 
 def main(path: str) -> int:
-    with open(path, encoding="utf-8") as fh:
+    target = ZAP_DIR / os.path.basename(path)
+    if not target.is_file():
+        print(f"::error::No existe el reporte de ZAP {target.name} en zap/")
+        return 1
+    with open(target, encoding="utf-8") as fh:
         report = json.load(fh)
 
     counts = {name: 0 for name in RISK.values()}

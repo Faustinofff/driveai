@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Bot, Check, Plus, RefreshCw, Send, User } from 'lucide-react'
 import { recommendCars } from '../services/api'
 import type { ApiError } from '../services/api'
+import { secureRandomId } from '../utils/secureRandomId'
 import { selectSessionId, useCartStore } from '../store/cartStore'
 import type { Car } from '../types'
 import { FUEL_COLORS, FUEL_LABELS } from '../types'
@@ -37,10 +38,7 @@ const KIND_MESSAGES: Record<ErrorKind, string> = {
 }
 
 function uid(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID()
-  }
-  return `m-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  return `m-${secureRandomId()}`
 }
 
 // Ante un 503 se muestra el motivo que manda el backend (Problem Details): saturado,

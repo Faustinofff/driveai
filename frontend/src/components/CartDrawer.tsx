@@ -59,7 +59,13 @@ function CartDrawerPanel({ onClose, onOrderCreated }: Omit<CartDrawerProps, 'ope
   return (
     <Portal>
       <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby="cart-title">
-        <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Fondo del carrito"
+          onClick={onClose}
+          className="absolute inset-0 cursor-default bg-slate-900/50 backdrop-blur-sm"
+        />
 
         <aside
           ref={panelRef}
