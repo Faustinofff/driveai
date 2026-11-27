@@ -62,7 +62,7 @@ function CartDrawerPanel({ onClose, onOrderCreated }: Omit<CartDrawerProps, 'ope
         <button
           type="button"
           tabIndex={-1}
-          aria-label="Cerrar carrito"
+          aria-label="Fondo del carrito"
           onClick={onClose}
           className="absolute inset-0 cursor-default bg-slate-900/50 backdrop-blur-sm"
         />

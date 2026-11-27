@@ -141,7 +141,7 @@ function CarFormModal({ car, onClose }: CarFormModalProps) {
       <button
         type="button"
         tabIndex={-1}
-        aria-label="Cerrar formulario"
+        aria-label="Fondo del formulario"
         onClick={onClose}
         className={`${OVERLAY} cursor-default`}
       />

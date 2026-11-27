@@ -62,7 +62,7 @@ export function CarDetailModal({ car, onClose, onAdd, feedback = 'idle' }: CarDe
         <button
           type="button"
           tabIndex={-1}
-          aria-label="Cerrar detalle del vehículo"
+          aria-label="Fondo del detalle"
           onClick={onClose}
           className={`${OVERLAY} cursor-default`}
         />
