@@ -28,8 +28,8 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | --- | --- | --- | --- |
 | Bloqueante | 0 | 0 | 0 |
 | Crítica | 0 | 0 | 3 (D-01, DEF-07, DEF-08) |
-| Mayor | 1 (DEF-18) | 2 (DEF-11, DEF-19) | 8 (D-04, D-05, DEF-09, DEF-10, DEF-12, DEF-13, DEF-14, DEF-15) |
-| Menor | 1 (D-03) | 2 (DEF-17, DEF-21) | 2 (DEF-16, DEF-20) |
+| Mayor | 0 | 1 (DEF-11) | 10 (D-04, D-05, DEF-09, DEF-10, DEF-12, DEF-13, DEF-14, DEF-15, DEF-18, DEF-19) |
+| Menor | 1 (D-03) | 0 | 4 (DEF-16, DEF-17, DEF-20, DEF-21) |
 
 > ✅ **D-01 cerrado el 10/11/2026**: historial reescrito y verificado con Gitleaks
 > (`no leaks found` sobre todo el historial). Ver `15-saneamiento-historial-D01.md`.
@@ -231,7 +231,7 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Detectado por | SonarCloud en el PR #4 ("Path Traversal via LLM-supplied CLI arguments") |
 | Obtenido | `ci/verify-live-ai.py` y `ci/verify-partial2.py` escribían en la ruta de `--report` sin validarla |
 | Corrección | El reporte se guarda siempre en `work/`; de `--report` solo se usa el nombre del archivo |
-| Estado | Corregido en `fix/entrega-final-g1` — pendiente nuevo análisis de SonarCloud |
+| Estado | **Cerrado — verificado en SonarCloud sobre `main` (27/11)**: 0 issues abiertos |
 
 ### DEF-18 · Quality Gate de SonarCloud no aprobado
 
@@ -245,7 +245,7 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Plan | Desactivar el análisis automático y correrlo desde CI con JaCoCo (`13-configurar-sonarcloud.md`); clasificar cada issue: corregir o marcar como falso positivo con justificación |
 | Workaround | Las mismas reglas se cubren hoy con SpotBugs, Trivy, Gitleaks y ZAP en CI |
 | Avance 26/11 | Nuevo análisis de `main`: Seguridad **E** con 30 hallazgos. Corregidos en `fix/sonar-security`: acción de Gitleaks fijada por SHA (S7637); token de registro leído con `jq` desde archivo en vez de `curl \| python` (S8482, Schemathesis y ZAP); carpeta de ZAP sin `chmod 777`, propiedad del usuario de la imagen (S2612); `npm ci --ignore-scripts` en CI y en el Dockerfile (S6505); Playwright desde `node_modules/.bin` en vez de `npx` (S6505/S8543); Newman `6.2.3` exacto sin scripts (S6505/S8543); Schemathesis `3.39.16` exacto y solo wheels (S8541/S8544); path traversal en `ci/check-zap.py` (S8707); usuario y base de PostgreSQL de `ci/verify-partial2.py` validados y fuera de la línea de comandos (S8705); `crypto` en lugar de `Math.random` en el chat, el carrito, la clave de idempotencia y k6 (S2245); fondos de los modales como `<button>` nativo (S6848); `Number.parseFloat/parseInt` (S7773); sin regex en la URL base (S8786); la API rechaza con `ApiRequestError extends Error` (S6671); reporter de Playwright sin ternario duplicado (S3923) |
-| Estado | **Corregido — pendiente nuevo análisis de SonarCloud** sobre el PR de `fix/sonar-security` |
+| Estado | **Cerrado — verificado en SonarCloud sobre `main` (27/11)**: Quality Gate aprobado, Security rating **A**, 0 issues abiertos (todas las calidades), 0 security hotspots |
 
 ### DEF-19 · Sin TLS en el despliegue con Docker Compose
 
@@ -259,7 +259,7 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Corrección | `frontend/nginx.conf` con server 443 (`ssl`, `http2`, TLS 1.2/1.3), `frontend/docker-entrypoint.d/10-driveai-tls.sh` genera el certificado; `docker-compose.yml` publica `FRONTEND_HTTPS_PORT` y agrega el origen HTTPS a CORS |
 | Esperado | Tráfico cifrado con TLS |
 | Workaround | Entorno de demo local: el tráfico no sale de la máquina. En un despliegue real se publica detrás de un proxy con TLS (HSTS ya está configurado) |
-| Estado | **Corregido — pendiente CI**: nginx sirve HTTPS (TLS 1.2/1.3) en `https://localhost:5443` con certificado autofirmado generado al iniciar el contenedor (sin certificados en el repo). El workflow *Entrega 2 - flujo desplegado* verifica handshake, cabeceras (HSTS, CSP), API y login por HTTPS. HTTP 5173 se mantiene para la suite automatizada local |
+| Estado | **Cerrado — verificado en CI** (*Entrega 2 - flujo desplegado*, PR de `fix/tls-def19`, mergeado): handshake TLS validando el certificado (sin `-k`), cabeceras HSTS y CSP, API y login por `https://localhost:5443`. HTTP 5173 se mantiene para la suite automatizada local |
 
 ### Defectos previos (de `01-plan-de-pruebas.md`)
 
@@ -281,7 +281,7 @@ Equivalencia con la escala anterior: S1 → Bloqueante · S2 → Crítica · S3 
 | Obtenido | `vite` ≤ 6.4.3 (alta) con `esbuild` ≤ 0.24.2 (moderada, GHSA-67mh-4wv8-2f99), `source-map-js` 1.0.0–1.2.1 (alta, GHSA-68fv-2mgg-jv7q), `postcss-selector-parser` < 6.1.5 (moderada, GHSA-rj75-hqrm-r3gf) |
 | Análisis | Son dependencias de compilación y del servidor de desarrollo; la imagen final solo contiene los estáticos de `dist/` servidos por nginx. Aun así el script `dev` usa `vite --host` (servidor expuesto en la red local), por lo que no se acepta el riesgo |
 | Corrección | `npm audit fix` (source-map-js, postcss-selector-parser) y actualización de Vite 5 → 6 (`npm install -D vite@6`), que trae un esbuild corregido. Resultado: `npm audit` → **0 vulnerabilidades**; `npm run build` OK |
-| Estado | **Corregido — pendiente CI** (build, E2E Playwright y Compose sobre el PR) |
+| Estado | **Cerrado — verificado en CI** (PR de `fix/npm-audit-def21`, mergeado): build, E2E Playwright y Compose en verde; `npm audit` → 0 vulnerabilidades |
 
 ## Hallazgos de proceso (no son defectos del producto)
 
