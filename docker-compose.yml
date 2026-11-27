@@ -136,9 +136,9 @@ services:
     depends_on:
       - backend
     ports:
-      - "${FRONTEND_PORT:-5173}:80"
+      - "${FRONTEND_PORT:-5173}:8080"
       # HTTPS con certificado autofirmado generado al iniciar (DEF-19).
-      - "${FRONTEND_HTTPS_PORT:-5443}:443"
+      - "${FRONTEND_HTTPS_PORT:-5443}:8443"
 
 volumes:
   postgres-data:
